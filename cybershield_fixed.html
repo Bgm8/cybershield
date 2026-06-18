@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CyberShield — Threat Intelligence</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#070b15;font-family:'Share Tech Mono','Courier New',monospace;color:#c8d6e5;min-height:100vh}
+  input,button{font-family:inherit}
+  input::placeholder{color:#1a3a5c}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:#070b15}
+  ::-webkit-scrollbar-thumb{background:#0d2040;border-radius:2px}
+  #header{background:linear-gradient(90deg,#070b15,#0d1f3c 50%,#070b15);border-bottom:1px solid #0d2040;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+  #logo-icon{width:42px;height:42px;background:linear-gradient(135deg,#00d4ff,#0055ff);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 24px rgba(0,212,255,.35);margin-right:12px}
+  #logo-wrap{display:flex;align-items:center}
+  #logo-name{font-size:18px;font-weight:bold;color:#00d4ff;letter-spacing:3px}
+  #logo-sub{font-size:9px;color:#2a5a8a;letter-spacing:3px}
+  #status-pill{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;border:1px solid #1a3a5c;cursor:pointer;transition:.3s}
+  #status-dot{width:7px;height:7px;border-radius:50%;background:#4a6fa5;transition:.3s}
+  #status-text{font-size:10px;letter-spacing:1px;color:#4a6fa5;transition:.3s}
+  #debug-box{background:#050810;border:1px solid #0d2040;margin:16px 24px 0;border-radius:10px;padding:16px;font-size:11px;line-height:2}
+  #offline-banner{display:none;background:rgba(255,68,68,.06);border:1px solid rgba(255,68,68,.3);margin:16px 24px 0;border-radius:10px;padding:16px 20px}
+  #offline-banner h3{color:#ff4444;font-size:13px;margin-bottom:10px}
+  .code-block{background:#050810;border-radius:8px;padding:14px;font-size:11px;color:#00ff88;line-height:2.2;white-space:pre;overflow-x:auto}
+  .code-comment{color:#2a5a8a}
+  #tabs{display:flex;border-bottom:1px solid #0d2040;background:#060a12;padding:0 24px}
+  .tab{background:none;border:none;border-bottom:2px solid transparent;color:#2a5a8a;padding:13px 20px;cursor:pointer;font-size:11px;letter-spacing:2px;transition:.2s}
+  .tab.active{border-bottom-color:#00d4ff;color:#00d4ff}
+  #content{padding:24px;max-width:960px;margin:0 auto}
+  .panel{display:none}.panel.active{display:block}
+  .type-btn{padding:9px 22px;border-radius:8px;cursor:pointer;font-size:12px;letter-spacing:1px;transition:.2s;background:rgba(255,255,255,.02);border:1px solid #0d2040;color:#2a5a8a;font-family:inherit}
+  .type-btn.active{background:rgba(0,212,255,.12);border-color:#00d4ff;color:#00d4ff}
+  .card{background:rgba(255,255,255,.02);border:1px solid #0d2040;border-radius:12px;padding:20px;margin-bottom:16px}
+  .label{font-size:10px;color:#2a5a8a;letter-spacing:2px;margin-bottom:10px}
+  #scan-row{display:flex;gap:10px}
+  #target-input{flex:1;background:rgba(0,0,0,.5);border:1px solid #0d2040;border-radius:8px;padding:11px 16px;color:#00d4ff;font-size:13px;font-family:inherit;outline:none}
+  #scan-btn{padding:11px 28px;background:linear-gradient(135deg,#0055ff,#00d4ff);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:12px;font-weight:bold;letter-spacing:1px;box-shadow:0 0 20px rgba(0,212,255,.25);min-width:120px;transition:.2s;font-family:inherit}
+  #scan-btn:disabled{background:#0d1f3c;box-shadow:none;cursor:not-allowed}
+  #error-msg{margin-top:10px;color:#ff4444;font-size:12px;display:none}
+  #log-box{background:#050810;border:1px solid #0d2040;border-radius:10px;padding:14px 16px;max-height:130px;overflow-y:auto;margin-bottom:16px;display:none}
+  .log-line{font-size:11px;line-height:1.9}
+  .log-time{color:#1a3a5c;margin-right:8px}
+  #results{display:none}
+  #threat-banner{border-radius:12px;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  #verdict-label{font-size:10px;color:#2a5a8a;letter-spacing:2px}
+  #verdict-text{font-size:22px;font-weight:bold;margin-top:4px}
+  #verdict-sub{font-size:11px;color:#2a5a8a;margin-top:4px}
+  #gauge{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  #gauge-inner{width:62px;height:62px;border-radius:50%;background:#070b15;display:flex;align-items:center;justify-content:center;flex-direction:column}
+  #gauge-score{font-size:20px;font-weight:bold;line-height:1}
+  #gauge-label{font-size:8px;color:#2a5a8a;letter-spacing:1px}
+  #stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .stat-card{background:rgba(255,255,255,.02);border:1px solid #0d2040;border-radius:10px;padding:14px 0;text-align:center}
+  .stat-val{font-size:26px;font-weight:bold}
+  .stat-lbl{font-size:9px;color:#2a5a8a;letter-spacing:2px;margin-top:4px}
+  #detail-grid{display:grid;gap:14px}
+  .detail-card{background:rgba(255,255,255,.02);border:1px solid #0d2040;border-radius:12px;padding:18px}
+  .detail-title{font-size:10px;color:#2a5a8a;letter-spacing:2px;margin-bottom:14px}
+  .detail-row{padding:9px 0;border-bottom:1px solid #080e1a;display:flex;justify-content:space-between;align-items:center}
+  .detail-key{font-size:9px;color:#2a5a8a;letter-spacing:1px}
+  .detail-val{font-size:12px;color:#c8d6e5}
+  .verdict-badge{font-size:9px;padding:3px 10px;border-radius:4px}
+  .hist-row{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:rgba(255,255,255,.02);border:1px solid #0d2040;border-radius:10px;margin-bottom:8px}
+  .hist-target{font-size:12px;color:#c8d6e5}
+  .hist-meta{font-size:10px;color:#2a5a8a;margin-top:2px}
+  .badge{padding:4px 14px;border-radius:6px;font-size:10px}
+  .setup-step{background:rgba(255,255,255,.02);border:1px solid #0d2040;border-radius:12px;padding:20px;margin-bottom:14px}
+  .step-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .step-num{width:32px;height:32px;border-radius:50%;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.26);display:flex;align-items:center;justify-content:center;font-size:11px;color:#00d4ff;font-weight:bold;flex-shrink:0}
+  .step-title{color:#00d4ff;font-size:13px;font-weight:bold}
+  .step-desc{font-size:12px;color:#8aa6c8;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="logo-wrap">
+    <div id="logo-icon">🛡️</div>
+    <div>
+      <div id="logo-name">CYBERSHIELD</div>
+      <div id="logo-sub">AI THREAT INTELLIGENCE PLATFORM v1.0</div>
+    </div>
+  </div>
+  <div id="status-pill" onclick="checkBackend()">
+    <div id="status-dot"></div>
+    <span id="status-text">CHECKING...</span>
+    <span style="font-size:10px;color:#2a5a8a;margin-left:4px">↺</span>
+  </div>
+</div>
+
+<!-- DEBUG BOX — shows exactly what's happening -->
+<div id="debug-box">
+  <div style="color:#00d4ff;margin-bottom:8px;letter-spacing:2px;font-size:10px">🔍 CONNECTION DEBUGGER</div>
+  <div id="debug-log" style="color:#4a8aaa">Starting diagnostics...</div>
+</div>
+
+<div id="offline-banner">
+  <h3>⚠️ Backend Not Reachable — Steps to Fix:</h3>
+  <div class="code-block"><span class="code-comment"># Keep this file open. Open a NEW CMD window and run:</span>
+cd C:\Users\sidda\cybershield\backend
+venv\Scripts\activate
+uvicorn main:app --reload --port 8000 --host 0.0.0.0
+
+<span class="code-comment"># Then open ANOTHER new CMD window and run:</span>
+cd C:\Users\sidda\cybershield\backend
+python -m http.server 3000
+
+<span class="code-comment"># Then open Chrome and go to:</span>
+http://localhost:3000/cybershield_fixed.html</div>
+</div>
+
+<div id="tabs">
+  <button class="tab active" onclick="switchTab('scanner',this)">⚡ Scanner</button>
+  <button class="tab" onclick="switchTab('history',this)">📋 History</button>
+  <button class="tab" onclick="switchTab('setup',this)">🔧 Setup Guide</button>
+</div>
+
+<div id="content">
+  <div id="panel-scanner" class="panel active">
+    <div style="display:flex;gap:10px;margin-bottom:18px">
+      <button class="type-btn active" id="btn-url" onclick="setScanType('url')">🔗 URL / Domain</button>
+      <button class="type-btn" id="btn-ip" onclick="setScanType('ip')">🌐 IP Address</button>
+    </div>
+    <div class="card">
+      <div class="label" id="input-label">TARGET URL OR DOMAIN</div>
+      <div id="scan-row">
+        <input id="target-input" placeholder="https://example.com or example.com" onkeydown="if(event.key==='Enter')runScan()"/>
+        <button id="scan-btn" onclick="runScan()">⚡ SCAN</button>
+      </div>
+      <div id="error-msg"></div>
+      <div style="margin-top:10px;font-size:11px;color:#1a3a5c">
+        Try: <span style="color:#2a5a8a;cursor:pointer" onclick="document.getElementById('target-input').value='google.com'">google.com</span> ·
+        <span style="color:#2a5a8a;cursor:pointer" onclick="document.getElementById('target-input').value='8.8.8.8'">8.8.8.8</span>
+      </div>
+    </div>
+    <div id="log-box"></div>
+    <div id="results">
+      <div id="threat-banner">
+        <div>
+          <div id="verdict-label">VERDICT</div>
+          <div id="verdict-text"></div>
+          <div id="verdict-sub"></div>
+        </div>
+        <div>
+          <div id="gauge"><div id="gauge-inner"><div id="gauge-score"></div><div id="gauge-label">RISK</div></div></div>
+          <div style="font-size:9px;color:#2a5a8a;text-align:center;margin-top:4px">/100</div>
+        </div>
+      </div>
+      <div id="stats-row"></div>
+      <div id="detail-grid"></div>
+    </div>
+  </div>
+
+  <div id="panel-history" class="panel">
+    <div class="label" id="hist-label">RECENT SCANS (0)</div>
+    <div id="hist-list">
+      <div style="text-align:center;padding:60px;background:rgba(255,255,255,.02);border:1px solid #0d2040;border-radius:12px">
+        <div style="font-size:32px;margin-bottom:12px">📋</div>
+        <div style="color:#2a5a8a;font-size:13px">No scans yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-setup" class="panel">
+    <div class="label">🔧 COMPLETE SETUP GUIDE</div><br>
+    <div class="setup-step">
+      <div class="step-header"><div class="step-num">01</div><div class="step-title">You need 3 CMD windows open at same time</div></div>
+      <div class="code-block"><span class="code-comment"># CMD Window 1 — FastAPI backend:</span>
+cd C:\Users\sidda\cybershield\backend
+venv\Scripts\activate
+uvicorn main:app --reload --port 8000 --host 0.0.0.0
+
+<span class="code-comment"># CMD Window 2 — Frontend file server:</span>
+cd C:\Users\sidda\cybershield\backend
+python -m http.server 3000
+
+<span class="code-comment"># Browser — open this URL (not the file directly):</span>
+http://localhost:3000/cybershield_fixed.html</div>
+    </div>
+    <div class="setup-step">
+      <div class="step-header"><div class="step-num">02</div><div class="step-title">Verify backend is running</div></div>
+      <div class="step-desc">Open Chrome → go to <strong style="color:#00d4ff">http://localhost:8000/health</strong><br>
+      You must see: <strong style="color:#00ff88">{"status":"online","vt_key_set":true,"abuse_key_set":true}</strong></div>
+    </div>
+    <div class="setup-step">
+      <div class="step-header"><div class="step-num">03</div><div class="step-title">Always open via http:// not file://</div></div>
+      <div class="step-desc">❌ Wrong: double-clicking the .html file (file:// URL)<br>
+      ✅ Right: <strong style="color:#00d4ff">http://localhost:3000/cybershield_fixed.html</strong></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BACKEND = "http://localhost:8080";
+let scanType = "url";
+let history = [];
+
+const COLORS = {
+  HIGH:   {main:"#ff4444",bg:"rgba(255,68,68,.08)",border:"rgba(255,68,68,.3)"},
+  MEDIUM: {main:"#ffaa00",bg:"rgba(255,170,0,.08)",border:"rgba(255,170,0,.3)"},
+  CLEAN:  {main:"#00ff88",bg:"rgba(0,255,136,.08)",border:"rgba(0,255,136,.3)"},
+  NONE:   {main:"#00d4ff",bg:"rgba(0,212,255,.05)",border:"rgba(0,212,255,.2)"},
+};
+
+function debugLog(msg, color="#4a8aaa") {
+  const d = document.getElementById("debug-log");
+  const time = new Date().toLocaleTimeString();
+  d.innerHTML += `<div style="color:${color}"><span style="color:#1a3a5c">${time}</span> › ${msg}</div>`;
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById("panel-"+id).classList.add("active");
+  btn.classList.add("active");
+}
+
+function setScanType(t) {
+  scanType = t;
+  document.getElementById("btn-url").classList.toggle("active",t==="url");
+  document.getElementById("btn-ip").classList.toggle("active",t==="ip");
+  document.getElementById("input-label").textContent = t==="url"?"TARGET URL OR DOMAIN":"TARGET IP ADDRESS";
+  document.getElementById("target-input").placeholder = t==="url"?"https://example.com":"8.8.8.8";
+}
+
+async function checkBackend() {
+  const dot=document.getElementById("status-dot");
+  const txt=document.getElementById("status-text");
+  const pill=document.getElementById("status-pill");
+  const banner=document.getElementById("offline-banner");
+
+  dot.style.background="#ffaa00";
+  dot.style.boxShadow="0 0 8px #ffaa00";
+  txt.style.color="#ffaa00";
+  txt.textContent="CHECKING...";
+  debugLog("Attempting to reach " + BACKEND + "/health ...");
+
+  try {
+    // Try fetch with no-cors first to detect if server is up at all
+    debugLog("Sending health check request...");
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), 5000);
+
+    const r = await fetch(`${BACKEND}/health`, {
+      method: "GET",
+      headers: {"Content-Type":"application/json"},
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    debugLog(`Response status: ${r.status}`, r.ok?"#00ff88":"#ff4444");
+
+    if (r.ok) {
+      const d = await r.json();
+      debugLog(`vt_key_set: ${d.vt_key_set}, abuse_key_set: ${d.abuse_key_set}`,
+               d.vt_key_set?"#00ff88":"#ffaa00");
+
+      // Green dot — backend online
+      dot.style.background="#00ff88";
+      dot.style.boxShadow="0 0 8px #00ff88";
+      txt.style.color="#00ff88";
+      txt.textContent="BACKEND ONLINE";
+      pill.style.borderColor="rgba(0,255,136,.3)";
+      pill.style.background="rgba(0,255,136,.08)";
+      banner.style.display="none";
+
+      if (!d.vt_key_set || !d.abuse_key_set) {
+        debugLog("⚠️ Backend online but API keys not loaded! Check your .env file.", "#ffaa00");
+      } else {
+        debugLog("✓ All systems ready — backend + API keys confirmed!", "#00ff88");
+      }
+    } else {
+      throw new Error("HTTP " + r.status);
+    }
+  } catch(err) {
+    debugLog(`Connection failed: ${err.message}`, "#ff4444");
+
+    if (err.message.includes("abort") || err.message.includes("signal")) {
+      debugLog("Request timed out — backend is not responding on port 8000", "#ff4444");
+    } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+      debugLog("Network error — backend not running OR CORS blocking. Try --host 0.0.0.0", "#ff4444");
+    } else if (err.message.includes("CORS")) {
+      debugLog("CORS error — restart uvicorn with: --host 0.0.0.0", "#ffaa00");
+    }
+
+    debugLog("Make sure you opened this file via http://localhost:3000 not file://", "#ffaa00");
+
+    dot.style.background="#ff4444";
+    dot.style.boxShadow="0 0 8px #ff4444";
+    txt.style.color="#ff4444";
+    txt.textContent="OFFLINE";
+    pill.style.borderColor="rgba(255,68,68,.3)";
+    pill.style.background="rgba(255,68,68,.08)";
+    banner.style.display="block";
+  }
+}
+
+function addLog(msg, type="info") {
+  const box=document.getElementById("log-box");
+  box.style.display="block";
+  const colors={info:"#4a8aaa",success:"#00ff88",error:"#ff4444",warn:"#ffaa00"};
+  const icons={info:"›",success:"✓",error:"✗",warn:"⚠"};
+  const line=document.createElement("div");
+  line.className="log-line";
+  line.style.color=colors[type];
+  line.innerHTML=`<span class="log-time">${new Date().toLocaleTimeString()}</span>${icons[type]} ${msg}`;
+  box.appendChild(line);
+  box.scrollTop=box.scrollHeight;
+}
+
+function clearLog(){
+  const box=document.getElementById("log-box");
+  box.innerHTML="";box.style.display="none";
+}
+
+function showError(msg){
+  const e=document.getElementById("error-msg");
+  e.textContent="⚠️ "+msg;e.style.display="block";
+}
+function clearError(){document.getElementById("error-msg").style.display="none";}
+
+async function runScan() {
+  const target=document.getElementById("target-input").value.trim();
+  if(!target){showError("Enter a URL or IP address.");return;}
+  clearError();clearLog();
+  document.getElementById("results").style.display="none";
+  const btn=document.getElementById("scan-btn");
+  btn.disabled=true;btn.textContent="SCANNING…";
+  addLog(`Scanning ${scanType.toUpperCase()}: ${target}`);
+  addLog("Calling CyberShield backend...");
+  try {
+    addLog("Querying VirusTotal (70+ engines)...");
+    if(scanType==="ip") addLog("Querying AbuseIPDB...");
+    const response=await fetch(`${BACKEND}/scan`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({target,scan_type:scanType}),
+      signal:AbortSignal.timeout(35000),
+    });
+    if(!response.ok){const e=await response.json();throw new Error(e.detail||"Scan failed");}
+    const data=await response.json();
+    addLog(`${Object.keys(data.engines||{}).length} engines responded`,"success");
+    addLog(`Threat level: ${data.threat_level}`,data.threat_level==="CLEAN"?"success":"error");
+    renderResults(data);
+    addToHistory(target,data);
+  } catch(err) {
+    addLog("Error: "+err.message,"error");
+    showError(err.message);
+  } finally {
+    btn.disabled=false;btn.textContent="⚡ SCAN";
+  }
+}
+
+function renderResults(data) {
+  const C=COLORS[data.threat_level]||COLORS.NONE;
+  const banner=document.getElementById("threat-banner");
+  banner.style.background=C.bg;
+  banner.style.border=`1px solid ${C.border}`;
+  document.getElementById("verdict-text").style.color=C.main;
+  document.getElementById("verdict-text").textContent=
+    data.threat_level==="CLEAN"?"✅ NO THREATS DETECTED":
+    data.threat_level==="MEDIUM"?"⚠️ SUSPICIOUS ACTIVITY":"🚨 THREAT DETECTED";
+  document.getElementById("verdict-sub").textContent=
+    `${data.target}  ·  ${new Date(data.scanned_at).toLocaleTimeString()}`;
+  const score=data.risk_score||0;
+  document.getElementById("gauge").style.background=
+    `conic-gradient(${C.main} ${score*3.6}deg,#0d1a2a 0deg)`;
+  document.getElementById("gauge").style.boxShadow=`0 0 20px ${C.main}33`;
+  document.getElementById("gauge-score").style.color=C.main;
+  document.getElementById("gauge-score").textContent=score;
+  const s=data.summary||{};
+  const stats=[
+    {label:"MALICIOUS",val:s.malicious??0,color:"#ff4444"},
+    {label:"SUSPICIOUS",val:s.suspicious??0,color:"#ffaa00"},
+    {label:"CLEAN",val:s.clean??0,color:"#00ff88"},
+  ];
+  if(s.abuse_reports!==undefined) stats.push({label:"ABUSE REPORTS",val:s.abuse_reports,color:"#ff4444"});
+  document.getElementById("stats-row").style.gridTemplateColumns=`repeat(${stats.length},1fr)`;
+  document.getElementById("stats-row").innerHTML=stats.map(st=>
+    `<div class="stat-card"><div class="stat-val" style="color:${st.color}">${st.val}</div><div class="stat-lbl">${st.label}</div></div>`
+  ).join("");
+  let cards="";
+  const engines=data.engines||{};
+  if(Object.keys(engines).length>0){
+    cards+=`<div class="detail-card"><div class="detail-title">🔬 ENGINE RESULTS (${s.total_engines||Object.keys(engines).length} engines)</div>
+    ${Object.entries(engines).map(([eng,verd])=>{
+      const v=verd.toUpperCase();
+      const isClean=v==="CLEAN"||v==="HARMLESS"||v==="UNDETECTED"||v==="LEGITIMATE";
+      const isSus=v.includes("SUSPICIOUS");
+      const col=isClean?"#00ff88":isSus?"#ffaa00":"#ff4444";
+      const bg=isClean?"rgba(0,255,136,.1)":isSus?"rgba(255,170,0,.1)":"rgba(255,68,68,.1)";
+      return `<div class="detail-row"><span style="font-size:11px;color:#6a9ac8">${eng}</span>
+      <span class="verdict-badge" style="color:${col};background:${bg};border:1px solid ${col}33">${verd}</span></div>`;
+    }).join("")}</div>`;
+  }
+  if(data.geo){
+    cards+=`<div class="detail-card"><div class="detail-title">🌍 GEOLOCATION & ISP</div>
+    ${Object.entries(data.geo).map(([k,v])=>{
+      const display=typeof v==="boolean"?(v?"YES ⚠️":"NO"):(v||"Unknown");
+      const col=typeof v==="boolean"?(v?"#ff4444":"#00ff88"):"#c8d6e5";
+      return `<div class="detail-row"><div><div class="detail-key">${k.replace(/_/g," ").toUpperCase()}</div>
+      <div class="detail-val" style="color:${col}">${display}</div></div></div>`;
+    }).join("")}</div>`;
+  }
+  if(data.abuse){
+    const a=data.abuse;
+    const rows=[["Abuse Score",`${a.abuse_score}/100`],["Total Reports",a.total_reports],
+      ["ISP",a.isp],["Usage Type",a.usage_type],["TOR Exit Node",a.is_tor?"YES ⚠️":"NO"],
+      ["Last Reported",a.last_reported||"Never"]];
+    cards+=`<div class="detail-card"><div class="detail-title">🚨 ABUSEIPDB REPORT</div>
+    ${rows.map(([k,v])=>`<div class="detail-row"><div><div class="detail-key">${k.toUpperCase()}</div>
+    <div class="detail-val">${v}</div></div></div>`).join("")}</div>`;
+  }
+  document.getElementById("detail-grid").innerHTML=cards;
+  document.getElementById("detail-grid").style.gridTemplateColumns=(data.geo||data.abuse)?"1fr 1fr":"1fr";
+  document.getElementById("results").style.display="block";
+}
+
+function addToHistory(target,data){
+  history.unshift({target,scanType,threatLevel:data.threat_level,
+    riskScore:data.risk_score,time:new Date().toLocaleTimeString()});
+  if(history.length>20)history.pop();
+  renderHistory();
+}
+
+function renderHistory(){
+  document.getElementById("hist-label").textContent=`RECENT SCANS (${history.length})`;
+  if(!history.length)return;
+  document.getElementById("hist-list").innerHTML=history.map(h=>{
+    const C=COLORS[h.threatLevel]||COLORS.NONE;
+    return `<div class="hist-row">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:18px">${h.scanType==="url"?"🔗":"🌐"}</span>
+        <div><div class="hist-target">${h.target}</div>
+        <div class="hist-meta">${h.scanType.toUpperCase()} · ${h.time} · risk: ${h.riskScore}/100</div></div>
+      </div>
+      <span class="badge" style="background:${C.bg};color:${C.main};border:1px solid ${C.border}">${h.threatLevel}</span>
+    </div>`;
+  }).join("");
+}
+
+// Auto check on load
+debugLog("Page loaded. Current URL: " + window.location.href);
+debugLog(window.location.protocol === "file:" ?
+  "⚠️ Opened as file:// — this WILL block connections! Use http://localhost:3000 instead" :
+  "✓ Opened via HTTP server — connection should work", 
+  window.location.protocol === "file:" ? "#ff4444" : "#00ff88");
+
+checkBackend();
+setInterval(checkBackend, 30000);
+</script>
+</body>
+</html>
