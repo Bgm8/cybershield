@@ -4,6 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CyberShield AI | Enterprise Threat Intelligence</title>
+
+    <!-- SEO -->
+    <meta name="description" content="CyberShield AI — Enterprise-grade cybersecurity threat intelligence platform. Scan URLs, IPs, domains and hashes against 90+ security engines in real time.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Content Security Policy — blocks XSS and inline script injection -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' https://fonts.googleapis.com;
+        font-src https://fonts.gstatic.com;
+        connect-src 'self' https://cybershield-production-2548.up.railway.app;
+        img-src 'self' data:;
+        object-src 'none';
+        base-uri 'self';
+        frame-ancestors 'none';
+    ">
+
+    <!-- Prevent clickjacking via meta -->
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+
     <!-- Premium Enterprise Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -18,8 +40,8 @@
         <div class="offline-box glass-panel">
             <div class="offline-icon">⚠️</div>
             <h2 class="font-display">Threat Intelligence Service Temporarily Unavailable</h2>
-            <p>Our global API is currently undergoing maintenance or experiencing network disruption. Operations will resume shortly.</p>
-            <button class="primary-btn mt-4" onclick="checkApiHealth()">RETRY CONNECTION</button>
+            <p class="text-muted mt-2">Our global API is currently undergoing maintenance or experiencing network disruption. Operations will resume shortly.</p>
+            <button class="primary-btn mt-4" id="btn-retry" onclick="checkApiHealth()">↺ RETRY CONNECTION</button>
         </div>
     </div>
 
@@ -36,20 +58,20 @@
                 </div>
             </div>
 
-            <nav class="nav-menu">
-                <button class="nav-btn active" data-target="dashboard">
+            <nav class="nav-menu" role="navigation" aria-label="Main Navigation">
+                <button class="nav-btn active" data-target="dashboard" id="nav-dashboard" aria-current="page">
                     <span class="icon">📊</span> SOC Dashboard
                 </button>
-                <button class="nav-btn" data-target="scanner">
+                <button class="nav-btn" data-target="scanner" id="nav-scanner">
                     <span class="icon">⚡</span> Advanced Scanner
                 </button>
-                <button class="nav-btn" data-target="investigations">
+                <button class="nav-btn" data-target="investigations" id="nav-investigations">
                     <span class="icon">🔬</span> Investigations
                 </button>
-                <button class="nav-btn" data-target="map">
+                <button class="nav-btn" data-target="map" id="nav-map">
                     <span class="icon">🌍</span> Global Threat Map
                 </button>
-                <button class="nav-btn" data-target="analytics">
+                <button class="nav-btn" data-target="analytics" id="nav-analytics">
                     <span class="icon">📈</span> Analytics
                 </button>
             </nav>
@@ -61,30 +83,30 @@
                         <span class="font-mono text-muted" id="sys-text">SYSTEM SECURE</span>
                     </div>
                 </div>
-                <button class="nav-btn" data-target="settings">
+                <button class="nav-btn" data-target="settings" id="nav-settings">
                     <span class="icon">⚙️</span> Settings
                 </button>
             </div>
         </aside>
 
         <!-- ================= MAIN CONTENT ================= -->
-        <main class="main-content">
+        <main class="main-content" role="main">
             
             <!-- TOP NAVBAR -->
             <header class="topbar glass-panel">
-                <div class="breadcrumbs font-mono text-muted" id="breadcrumb">
+                <div class="breadcrumbs font-mono text-muted" id="breadcrumb" aria-label="Breadcrumb">
                     CYBERSHIELD AI <span class="divider">/</span> <span class="current">SOC DASHBOARD</span>
                 </div>
                 <div class="topbar-actions">
-                    <div class="search-bar">
-                        <span class="search-icon">🔍</span>
-                        <input type="text" class="font-mono" placeholder="Search IOCs, Hashes, IPs...">
+                    <div class="search-bar" role="search">
+                        <span class="search-icon" aria-hidden="true">🔍</span>
+                        <input type="text" id="global-search" class="font-mono" placeholder="Quick scan: paste any IP or URL..." autocomplete="off" spellcheck="false">
                     </div>
-                    <div class="user-profile">
-                        <div class="avatar">SA</div>
+                    <div class="user-profile" aria-label="User info">
+                        <div class="avatar" aria-hidden="true">SA</div>
                         <div class="user-info">
-                            <span class="name font-display">System Admin</span>
-                            <span class="role font-mono text-faint">SOC Analyst Level 3</span>
+                            <span class="name font-display">Security Analyst</span>
+                            <span class="role font-mono text-faint">SOC Tier 3 Analyst</span>
                         </div>
                     </div>
                 </div>
@@ -94,103 +116,117 @@
             <div class="views-container">
 
                 <!-- 1. SOC DASHBOARD VIEW -->
-                <div id="view-dashboard" class="view active">
+                <div id="view-dashboard" class="view active" role="region" aria-label="SOC Dashboard">
                     <div class="hero-section glass-panel">
                         <div class="hero-content">
+                            <div class="hero-badge font-mono">🟢 ALL SYSTEMS OPERATIONAL</div>
                             <h2 class="font-display hero-title">Enterprise Threat Intelligence</h2>
-                            <p class="hero-sub text-muted">Protect domains, IPs, URLs, infrastructure, and digital assets using real-time threat intelligence from over 90+ security engines.</p>
+                            <p class="hero-sub text-muted">Protect domains, IPs, URLs, infrastructure, and digital assets using real-time threat intelligence from over 90+ security engines in parallel.</p>
                             <div class="hero-actions">
-                                <button class="primary-btn glow-effect" onclick="navigate('scanner')">START SCAN</button>
-                                <button class="secondary-btn" onclick="navigate('map')">VIEW LIVE THREATS</button>
+                                <button class="primary-btn glow-effect" id="btn-start-scan" onclick="navigate('scanner')">⚡ START SCAN</button>
+                                <button class="secondary-btn" id="btn-view-threats" onclick="navigate('map')">🌍 VIEW LIVE THREATS</button>
                             </div>
                         </div>
-                        <div class="hero-graphic">
-                            <!-- Animated globe/nodes CSS construct -->
+                        <div class="hero-graphic" aria-hidden="true">
                             <div class="node-network"></div>
                         </div>
                     </div>
 
                     <div class="dashboard-grid">
-                        <div class="dash-card glass-panel">
+                        <div class="dash-card glass-panel" role="status" aria-label="Active Threats">
                             <div class="dc-header font-mono">ACTIVE THREATS</div>
                             <div class="dc-value font-display text-danger counter" id="cnt-threats">0</div>
-                            <div class="dc-trend text-danger">↑ 12% vs last hour</div>
+                            <div class="dc-trend text-muted">Scanned this session</div>
                         </div>
-                        <div class="dash-card glass-panel">
+                        <div class="dash-card glass-panel" role="status" aria-label="Risk Detections">
                             <div class="dc-header font-mono">RISK DETECTIONS</div>
                             <div class="dc-value font-display text-warning counter" id="cnt-risks">0</div>
-                            <div class="dc-trend text-muted">Stable</div>
+                            <div class="dc-trend text-muted">High/Medium IOCs</div>
                         </div>
                         <div class="dash-card glass-panel">
                             <div class="dc-header font-mono">INTELLIGENCE SOURCES</div>
                             <div class="dc-value font-display text-success">90+</div>
                             <div class="dc-trend text-success">Engines Online</div>
                         </div>
-                        <div class="dash-card glass-panel">
+                        <div class="dash-card glass-panel" role="status" aria-label="API Status">
                             <div class="dc-header font-mono">API STATUS</div>
-                            <div class="dc-value font-display text-success" id="api-status-val">99.9%</div>
-                            <div class="dc-trend text-muted">Uptime</div>
+                            <div class="dc-value font-display text-success" id="api-status-val">--</div>
+                            <div class="dc-trend text-muted">Platform Uptime</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity Feed -->
+                    <div class="glass-panel p-6 mt-6">
+                        <div class="d-flex justify-between align-center mb-4">
+                            <h3 class="font-display">Recent Activity</h3>
+                            <span class="font-mono text-faint text-sm">This Session</span>
+                        </div>
+                        <div id="recent-activity">
+                            <div class="empty-state font-mono text-faint">No scans performed yet. Run your first analysis to see results here.</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 2. ADVANCED SCANNER VIEW -->
-                <div id="view-scanner" class="view">
+                <div id="view-scanner" class="view" role="region" aria-label="Advanced Scanner">
                     <div class="scanner-hero glass-panel">
                         <h2 class="font-display mb-4">Advanced Threat Intelligence Search</h2>
                         
-                        <div class="scan-tabs font-mono">
-                            <button class="scan-tab active" data-type="url">🔗 URL / Domain / Hash</button>
-                            <button class="scan-tab" data-type="ip">🌐 IPv4 / IPv6 Address</button>
+                        <div class="scan-tabs font-mono" role="tablist" aria-label="Scan type">
+                            <button class="scan-tab active" data-type="url" id="tab-url" role="tab" aria-selected="true">🔗 URL / Domain / Hash</button>
+                            <button class="scan-tab" data-type="ip" id="tab-ip" role="tab" aria-selected="false">🌐 IPv4 / IPv6 Address</button>
                         </div>
 
-                        <div class="scan-input-wrapper">
-                            <div class="scan-icon">🎯</div>
-                            <input type="text" id="scan-target" class="font-mono" placeholder="Enter Indicator of Compromise (IoC)...">
+                        <div class="scan-input-wrapper" id="scan-wrapper">
+                            <div class="scan-icon" aria-hidden="true">🎯</div>
+                            <input type="text" id="scan-target" class="font-mono" placeholder="Enter Indicator of Compromise (IoC)..." autocomplete="off" spellcheck="false" aria-label="Scan target">
                             <button class="primary-btn pulse-anim" id="btn-scan" onclick="executeScan()">ANALYZE THREAT</button>
                         </div>
-                        <div id="scan-error" class="scan-error text-danger font-mono mt-2" style="display:none;"></div>
+                        <div id="scan-error" class="scan-error text-danger font-mono mt-2" style="display:none;" role="alert"></div>
                         
-                        <!-- Progress Bar (Hidden by default) -->
+                        <!-- Progress Bar -->
                         <div class="scan-progress-container" id="scan-progress" style="display: none;">
-                            <div class="scan-progress-bar">
-                                <div class="scan-progress-fill"></div>
+                            <div class="scan-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                                <div class="scan-progress-fill" id="progress-fill"></div>
                             </div>
                             <div class="scan-progress-text font-mono text-muted">Analyzing against 90+ threat engines...</div>
-                            <div class="live-logs font-mono" id="live-logs"></div>
+                            <div class="live-logs font-mono" id="live-logs" aria-live="polite" aria-label="Live scan log"></div>
                         </div>
                     </div>
 
                     <!-- SCAN RESULTS -->
-                    <div id="scan-results" class="scan-results" style="display: none;">
+                    <div id="scan-results" class="scan-results" style="display: none;" role="region" aria-label="Scan Results">
                         
-                        <!-- Top Metrics -->
+                        <!-- Top Verdict + AI Analyst -->
                         <div class="results-top">
                             <div class="verdict-card glass-panel" id="verdict-card">
                                 <div class="vc-left">
                                     <div class="font-mono text-faint mb-2">THREAT CLASSIFICATION</div>
                                     <h2 class="font-display vc-title" id="res-title">CLEAN</h2>
                                     <div class="font-mono mt-2" id="res-target">Target: -</div>
+                                    <div class="verdict-stats mt-4" id="verdict-stats"></div>
                                 </div>
                                 <div class="vc-right">
-                                    <div class="circular-score" id="score-circle">
+                                    <div class="circular-score" id="score-circle" aria-label="Risk score">
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                                             <path class="circle-path" id="score-path" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                                         </svg>
                                         <div class="score-text font-display" id="res-score">0</div>
                                     </div>
-                                    <div class="font-mono text-faint mt-2">RISK SCORE</div>
+                                    <div class="font-mono text-faint mt-2">RISK SCORE /100</div>
+                                    <div class="scan-time font-mono text-faint text-sm mt-1" id="scan-time"></div>
                                 </div>
                             </div>
 
                             <!-- AI Security Analyst -->
                             <div class="ai-analyst-card glass-panel">
                                 <div class="ai-header">
-                                    <span class="ai-icon">🧠</span>
+                                    <span class="ai-icon" aria-hidden="true">🧠</span>
                                     <span class="font-display">AI Security Analyst</span>
+                                    <span class="ai-badge font-mono">COPILOT</span>
                                 </div>
-                                <div class="ai-body font-mono" id="ai-text">
+                                <div class="ai-body font-mono" id="ai-text" aria-live="polite">
                                     <!-- Typewriter text inserted here -->
                                 </div>
                             </div>
@@ -198,113 +234,149 @@
 
                         <!-- Secondary Metrics Grid -->
                         <div class="details-layout mt-4">
-                            <!-- Left Col: Details -->
+                            <!-- Left Col: Network + Abuse -->
                             <div class="left-col">
                                 <div class="glass-panel p-4 mb-4" id="network-panel">
-                                    <h3 class="font-display mb-3 text-accent">Network Intelligence</h3>
+                                    <h3 class="font-display mb-3 text-accent">🌐 Network Intelligence</h3>
                                     <div class="kv-grid" id="network-grid"></div>
                                 </div>
                                 <div class="glass-panel p-4" id="abuse-panel">
-                                    <h3 class="font-display mb-3 text-accent">AbuseIPDB Telemetry</h3>
+                                    <h3 class="font-display mb-3 text-danger">⚠️ AbuseIPDB Telemetry</h3>
                                     <div class="kv-grid" id="abuse-grid"></div>
                                 </div>
                             </div>
-                            <!-- Right Col: Engines -->
+
+                            <!-- Right Col: Security Engines -->
                             <div class="right-col glass-panel p-4">
                                 <div class="d-flex justify-between align-center mb-4">
                                     <h3 class="font-display text-accent">Security Engines (<span id="engine-cnt">0</span>)</h3>
-                                    <div class="filter-btns">
-                                        <button class="filter-btn font-mono active">ALL</button>
-                                        <button class="filter-btn font-mono text-danger">MALICIOUS</button>
+                                    <div class="filter-btns" role="group" aria-label="Filter engines">
+                                        <button class="filter-btn font-mono active" id="filter-all" onclick="filterEngines('all')">ALL</button>
+                                        <button class="filter-btn font-mono" id="filter-malicious" onclick="filterEngines('malicious')">🔴 MALICIOUS</button>
+                                        <button class="filter-btn font-mono" id="filter-clean" onclick="filterEngines('clean')">🟢 CLEAN</button>
                                     </div>
                                 </div>
                                 <div class="engines-list" id="engines-list"></div>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
                 <!-- 3. INVESTIGATIONS / HISTORY VIEW -->
-                <div id="view-investigations" class="view">
+                <div id="view-investigations" class="view" role="region" aria-label="Investigations Timeline">
                     <div class="glass-panel p-6">
                         <div class="d-flex justify-between align-center mb-6">
                             <h2 class="font-display">Investigation Timeline</h2>
-                            <button class="secondary-btn font-mono text-sm" onclick="clearHistory()">EXPORT JSON</button>
+                            <div class="d-flex gap-4">
+                                <button class="secondary-btn font-mono text-sm" id="btn-export" onclick="exportHistory()">⬇ EXPORT JSON</button>
+                                <button class="secondary-btn font-mono text-sm" id="btn-clear-history" onclick="clearHistory()" style="color: var(--danger); border-color: rgba(255,68,68,0.3);">✕ CLEAR</button>
+                            </div>
                         </div>
                         <div class="history-list" id="history-list">
-                            <!-- Populated via JS -->
+                            <div class="empty-state font-mono text-faint">No investigations logged in this session.</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 4. GLOBAL THREAT MAP VIEW -->
-                <div id="view-map" class="view">
+                <div id="view-map" class="view" role="region" aria-label="Global Threat Map">
                     <div class="glass-panel map-container">
                         <div class="map-overlay">
                             <h2 class="font-display">Global Cyber Attack Map</h2>
                             <p class="font-mono text-muted text-sm mt-2">Visualizing live telemetry data and originating threat vectors.</p>
+                            <div class="map-legend mt-4">
+                                <div class="legend-item"><span class="dot-small" style="background: var(--danger);"></span> <span class="font-mono text-sm">Critical Threat</span></div>
+                                <div class="legend-item"><span class="dot-small" style="background: var(--warning);"></span> <span class="font-mono text-sm">Suspicious Activity</span></div>
+                                <div class="legend-item"><span class="dot-small" style="background: var(--primary);"></span> <span class="font-mono text-sm">Known Malware C2</span></div>
+                            </div>
                         </div>
-                        <div class="world-map-sim">
-                            <!-- Pure CSS/JS simulated points for visual effect -->
+                        <div class="world-map-sim" aria-hidden="true">
                             <div class="map-point p1"></div>
                             <div class="map-point p2"></div>
                             <div class="map-point p3"></div>
                             <div class="map-point p4"></div>
+                            <div class="map-point p5" style="background:var(--warning); box-shadow: 0 0 15px var(--warning); top:55%; left:35%;"></div>
+                            <div class="map-point p6" style="background:var(--primary); box-shadow: 0 0 15px var(--primary); top:25%; left:55%;"></div>
                             <div class="map-connection c1"></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 5. ANALYTICS VIEW -->
-                <div id="view-analytics" class="view">
+                <div id="view-analytics" class="view" role="region" aria-label="Threat Analytics">
                     <div class="dashboard-grid">
                         <div class="glass-panel p-6" style="grid-column: span 2;">
-                            <h3 class="font-display mb-4">Threat Trends (7 Days)</h3>
-                            <div class="chart-sim bar-chart">
-                                <div class="bar" style="height: 40%"></div>
-                                <div class="bar" style="height: 60%"></div>
-                                <div class="bar" style="height: 30%"></div>
-                                <div class="bar" style="height: 80%"></div>
-                                <div class="bar" style="height: 50%"></div>
-                                <div class="bar" style="height: 90%; background: var(--danger)"></div>
-                                <div class="bar" style="height: 40%"></div>
-                            </div>
+                            <h3 class="font-display mb-4">Threat Trends (This Session)</h3>
+                            <div class="chart-sim bar-chart" id="bar-chart" aria-label="Bar chart"></div>
+                            <div class="chart-labels font-mono text-faint" id="chart-labels"></div>
                         </div>
                         <div class="glass-panel p-6">
                             <h3 class="font-display mb-4">Risk Distribution</h3>
-                            <div class="chart-sim pie-chart">
-                                <div class="pie-slice"></div>
+                            <div class="pie-chart-wrapper">
+                                <div class="chart-sim pie-chart" id="pie-chart" aria-label="Pie chart of risk distribution"></div>
+                                <div class="pie-legend" id="pie-legend">
+                                    <div class="legend-item"><span class="dot-small" style="background:var(--danger)"></span> <span class="font-mono text-sm">Critical</span></div>
+                                    <div class="legend-item"><span class="dot-small" style="background:var(--warning)"></span> <span class="font-mono text-sm">Suspicious</span></div>
+                                    <div class="legend-item"><span class="dot-small" style="background:var(--success)"></span> <span class="font-mono text-sm">Clean</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-6">
+                            <h3 class="font-display mb-4">Session Summary</h3>
+                            <div class="kv-grid" id="analytics-summary">
+                                <div class="kv-row"><span>Total Scans</span><span id="ana-total" class="font-mono">0</span></div>
+                                <div class="kv-row"><span>Critical Threats</span><span id="ana-critical" class="font-mono text-danger">0</span></div>
+                                <div class="kv-row"><span>Suspicious</span><span id="ana-suspicious" class="font-mono text-warning">0</span></div>
+                                <div class="kv-row"><span>Clean</span><span id="ana-clean" class="font-mono text-success">0</span></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 6. SETTINGS VIEW -->
-                <div id="view-settings" class="view">
+                <div id="view-settings" class="view" role="region" aria-label="Platform Settings">
                     <div class="glass-panel p-6 max-w-3xl">
-                        <h2 class="font-display mb-6">Platform Settings</h2>
+                        <h2 class="font-display mb-6">⚙️ Platform Settings</h2>
                         
                         <div class="settings-group">
-                            <h4 class="font-mono text-accent mb-4">API STATUS</h4>
-                            <div class="kv-row border-b"><span class="text-muted">VirusTotal Engine</span> <span class="text-success font-mono">CONNECTED</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">AbuseIPDB Engine</span> <span class="text-success font-mono">CONNECTED</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">Backend URL</span> <span class="text-faint font-mono" id="set-backend-url">-</span></div>
+                            <h4 class="font-mono text-accent mb-4">API CONNECTION STATUS</h4>
+                            <div class="kv-row border-b"><span class="text-muted">VirusTotal Engine</span> <span class="text-success font-mono" id="set-vt-status">CHECKING...</span></div>
+                            <div class="kv-row border-b"><span class="text-muted">AbuseIPDB Engine</span> <span class="text-success font-mono" id="set-abuse-status">CHECKING...</span></div>
+                            <div class="kv-row border-b"><span class="text-muted">Platform Version</span> <span class="text-faint font-mono">v2.0.0 Enterprise</span></div>
                         </div>
 
                         <div class="settings-group mt-8">
                             <h4 class="font-mono text-accent mb-4">THREAT FEEDS</h4>
                             <div class="d-flex justify-between align-center border-b pb-3 mb-3">
-                                <span>Real-time Malware Feeds</span>
-                                <div class="toggle active"></div>
+                                <div>
+                                    <div>Real-time Malware Feeds</div>
+                                    <div class="font-mono text-faint text-sm">VirusTotal multi-engine analysis</div>
+                                </div>
+                                <div class="toggle active" id="toggle-malware" role="switch" aria-checked="true"></div>
                             </div>
                             <div class="d-flex justify-between align-center border-b pb-3 mb-3">
-                                <span>Phishing URL Telemetry</span>
-                                <div class="toggle active"></div>
+                                <div>
+                                    <div>Phishing URL Telemetry</div>
+                                    <div class="font-mono text-faint text-sm">Real-time URL reputation scoring</div>
+                                </div>
+                                <div class="toggle active" id="toggle-phishing" role="switch" aria-checked="true"></div>
                             </div>
-                            <div class="d-flex justify-between align-center border-b pb-3 mb-3">
-                                <span>Zero-Day Vulnerability Alerts</span>
-                                <div class="toggle"></div>
+                            <div class="d-flex justify-between align-center pb-3">
+                                <div>
+                                    <div>IP Abuse Intelligence</div>
+                                    <div class="font-mono text-faint text-sm">AbuseIPDB community reports</div>
+                                </div>
+                                <div class="toggle active" id="toggle-abuse" role="switch" aria-checked="true"></div>
+                            </div>
+                        </div>
+
+                        <div class="settings-group mt-8">
+                            <h4 class="font-mono text-accent mb-4">SECURITY INFORMATION</h4>
+                            <div class="security-info-box font-mono text-faint text-sm">
+                                <p>🔒 All scan data is transmitted over HTTPS (TLS 1.2+).</p>
+                                <p class="mt-2">🔒 No scan results are stored or logged on our servers.</p>
+                                <p class="mt-2">🔒 Rate limiting is enforced at 50 requests/minute per IP.</p>
+                                <p class="mt-2">🔒 CORS policy restricts API access to this domain only.</p>
                             </div>
                         </div>
                     </div>
