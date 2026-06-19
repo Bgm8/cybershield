@@ -153,7 +153,6 @@ function navigate(viewId) {
 async function checkApiHealth() {
     const sysDot  = document.getElementById('sys-dot');
     const sysText = document.getElementById('sys-text');
-    const overlay = document.getElementById('offline-overlay');
     const apiVal  = document.getElementById('api-status-val');
 
     try {
@@ -167,9 +166,10 @@ async function checkApiHealth() {
 
         sysDot.className  = 'dot online';
         sysText.textContent = 'SYSTEM SECURE';
-        overlay.style.display = 'none';
-        apiVal.textContent    = '99.9%';
-        apiVal.className      = 'dc-value font-display text-success';
+        if (apiVal) {
+            apiVal.textContent    = '99.9%';
+            apiVal.className      = 'dc-value font-display text-success';
+        }
 
         // Update settings page statuses
         setEl('set-vt-status',    data.vt_key_set    ? 'CONNECTED' : 'KEY MISSING', data.vt_key_set    ? 'text-success' : 'text-danger');
@@ -178,9 +178,10 @@ async function checkApiHealth() {
     } catch {
         sysDot.className      = 'dot offline';
         sysText.textContent   = 'API OFFLINE';
-        overlay.style.display = 'flex';
-        apiVal.textContent    = 'OFFLINE';
-        apiVal.className      = 'dc-value font-display text-danger';
+        if (apiVal) {
+            apiVal.textContent    = 'OFFLINE';
+            apiVal.className      = 'dc-value font-display text-danger';
+        }
     }
 }
 

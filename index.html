@@ -9,14 +9,14 @@
     <meta name="description" content="CyberShield AI — Enterprise-grade cybersecurity threat intelligence platform. Scan URLs, IPs, domains and hashes against 90+ security engines in real time.">
     <meta name="robots" content="noindex, nofollow">
 
-    <!-- Content Security Policy — blocks XSS and inline script injection -->
+    <!-- Content Security Policy — blocks XSS and inline script injection, modified to support local testing, urlscan images, and inline click handlers -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self';
-        style-src 'self' https://fonts.googleapis.com;
+        script-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src https://fonts.gstatic.com;
-        connect-src 'self' https://cybershield-production-2548.up.railway.app;
-        img-src 'self' data:;
+        connect-src 'self' https://cybershield-production-2548.up.railway.app https://*.up.railway.app http://localhost:* http://127.0.0.1:*;
+        img-src 'self' data: https://urlscan.io;
         object-src 'none';
         base-uri 'self';
         frame-ancestors 'none';
@@ -34,16 +34,6 @@
     <!-- Animated Cyber Grid Background -->
     <div class="cyber-grid"></div>
     <div class="glow-orbs"></div>
-
-    <!-- Error Overlay (Shown if Backend is down) -->
-    <div id="offline-overlay" class="offline-overlay" style="display: none;">
-        <div class="offline-box glass-panel">
-            <div class="offline-icon">⚠️</div>
-            <h2 class="font-display">Threat Intelligence Service Temporarily Unavailable</h2>
-            <p class="text-muted mt-2">Our global API is currently undergoing maintenance or experiencing network disruption. Operations will resume shortly.</p>
-            <button class="primary-btn mt-4" id="btn-retry" onclick="checkApiHealth()">↺ RETRY CONNECTION</button>
-        </div>
-    </div>
 
     <!-- Layout Wrapper -->
     <div class="app-layout">
