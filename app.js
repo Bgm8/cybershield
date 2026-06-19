@@ -284,10 +284,27 @@ function renderResults(data) {
     document.getElementById('engine-cnt').textContent = Object.keys(engines).length;
     
     let eHtml = '';
-    for (const [name, result] of Object.entries(engines)) {
+    
+    // Sort engines: Malicious/Suspicious first, then Clean/Undetected
+    const sortedEngines = Object.entries(engines).sort((a, b) => {
+        const resA = a[1].toUpperCase();
+        const resB = b[1].toUpperCase();
+        const aClean = ["CLEAN", "HARMLESS", "UNDETECTED", "UNRATED", "TIMEOUT"].some(x => resA.includes(x));
+        const bClean = ["CLEAN", "HARMLESS", "UNDETECTED", "UNRATED", "TIMEOUT"].some(x => resB.includes(x));
+        
+        if (aClean === bClean) return a[0].localeCompare(b[0]); // Alphabetical if same category
+        return aClean ? 1 : -1; // Malicious (-1) comes before Clean (1)
+    });
+
+    for (const [name, result] of sortedEngines) {
         const resUp = result.toUpperCase();
-        const isClean = ["CLEAN", "HARMLESS", "UNDETECTED", "UNRATED"].some(x => resUp.includes(x));
-        const col = isClean ? THEMES.CLEAN : THEMES.HIGH;
+        const isClean = ["CLEAN", "HARMLESS", "UNDETECTED", "UNRATED", "TIMEOUT"].some(x => resUp.includes(x));
+        
+        // Detailed coloring
+        let col = THEMES.CLEAN;
+        if (!isClean) {
+            col = resUp.includes("SUSPICIOUS") ? THEMES.MEDIUM : THEMES.HIGH;
+        }
         
         eHtml += `
             <div class="engine-item">
@@ -323,13 +340,15 @@ function generateAiSummary(data) {
         summary += `Recommendation: Safe to allow. Standard monitoring applies.`;
     }
 
-    // Typewriter Effect
+    // Typewriter Effect with blinking cursor
     let i = 0;
     function typeWriter() {
         if (i < summary.length) {
-            aiBox.innerHTML += summary.charAt(i);
+            aiBox.innerHTML = summary.substring(0, i + 1) + '<span style="animation: pulse 1s infinite;">_</span>';
             i++;
             setTimeout(typeWriter, 15); // typing speed
+        } else {
+            aiBox.innerHTML = summary; // remove cursor at end
         }
     }
     typeWriter();
