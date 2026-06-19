@@ -6,7 +6,7 @@
 // This single variable controls where the frontend sends API requests.
 // For GitHub pages deployment, this should point to your Railway URL.
 // Example: const BACKEND_URL = "https://my-railway-app.up.railway.app";
-const BACKEND_URL = "https://cybershield-production-2548.up.railway.app/";
+const BACKEND_URL = "https://cybershield-production-2548.up.railway.app";
 
 // State
 let currentScanType = "url";
