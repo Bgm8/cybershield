@@ -14,8 +14,8 @@ from slowapi.errors import RateLimitExceeded
 
 # Load API keys from .env file
 load_dotenv()
-VT_API_KEY    = os.getenv("VIRUSTOTAL_API_KEY")
-ABUSE_API_KEY = os.getenv("ABUSEIPDB_API_KEY")
+VT_API_KEY    = os.getenv("VIRUSTOTAL_API_KEY", "").replace("VIRUSTOTAL_API_KEY=", "").strip()
+ABUSE_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "").replace("ABUSEIPDB_API_KEY=", "").strip()
 
 # FRONTEND_URL defines exactly which website is allowed to call this API.
 # It defaults to allowing localhost for development if not set.
