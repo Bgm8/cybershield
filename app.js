@@ -230,11 +230,19 @@ async function executeScan() {
     logTerminal(`[ROUTER] Target type: ${currentScanType.toUpperCase()} — dispatching to threat engines...`);
 
     try {
-        setTimeout(() => { progressBar.style.width = '35%'; logTerminal('[ENGINE] VirusTotal — querying global dataset...'); }, 600);
+        setTimeout(() => { progressBar.style.width = '35%'; logTerminal('[ENGINE] VirusTotal — querying 90+ security engines...'); }, 600);
         setTimeout(() => {
-            progressBar.style.width = '65%';
-            if (currentScanType === 'ip') logTerminal('[ENGINE] AbuseIPDB — querying community telemetry...');
-            logTerminal('[ENGINE] Geolocation — enriching network data...');
+            progressBar.style.width = '55%';
+            if (currentScanType === 'ip') {
+                logTerminal('[ENGINE] AbuseIPDB — querying community abuse reports...');
+                logTerminal('[ENGINE] Shodan InternetDB — scanning for open ports & CVEs...');
+                logTerminal('[ENGINE] AlienVault OTX — checking threat intelligence databases...');
+            } else {
+                logTerminal('[ENGINE] Google Safe Browsing — checking phishing/malware lists...');
+                logTerminal('[ENGINE] URLScan.io — deep page analysis...');
+                logTerminal('[ENGINE] AlienVault OTX — checking domain threat reputation...');
+            }
+            logTerminal('[ENGINE] GeoIP — enriching network intelligence...');
         }, 1400);
 
         const response = await fetch(`${BACKEND_URL}/scan`, {
@@ -360,22 +368,30 @@ function renderResults(data) {
     // AI Analyst
     generateAiSummary(data);
 
-    // Network panel
+    // Network panel — show enriched geo + IPInfo data
     const nwGrid = document.getElementById('network-grid');
     nwGrid.innerHTML = '';
     if (data.geo) {
         document.getElementById('network-panel').style.display = 'block';
         const g = data.geo;
-        addKvRows(nwGrid, [
-            ['Country',            g.country   || '—'],
-            ['Region / City',      `${g.region || '—'} / ${g.city || '—'}`],
-            ['ISP / Org',          g.isp       || '—'],
-            ['ASN',                g.asn       || '—'],
-            ['Hosting / Datacenter', g.is_hosting ? '⚠ YES' : 'NO', g.is_hosting],
-            ['Proxy / VPN',          g.is_proxy   ? '⚠ YES' : 'NO', g.is_proxy],
-            ['Mobile Network',       g.is_mobile  ? 'YES' : 'NO'],
-            ['Usage Type',           g.usage_type || '—'],
-        ]);
+        const rows = [
+            ['Country',               g.country    || '—'],
+            ['Region / City',         `${g.region || '—'} / ${g.city || '—'}`],
+            ['ISP / Org',             g.isp        || '—'],
+            ['ASN',                   g.asn        || '—'],
+        ];
+        if (g.hostname)    rows.push(['Hostname',       g.hostname]);
+        if (g.company)     rows.push(['Company',        g.company]);
+        if (g.ip_type)     rows.push(['IP Type',        g.ip_type]);
+        if (g.timezone)    rows.push(['Timezone',       g.timezone]);
+        rows.push(['Hosting / Datacenter', g.is_hosting ? '⚠ YES' : 'NO', g.is_hosting]);
+        rows.push(['Proxy / VPN',          (g.is_proxy || g.is_vpn) ? '⚠ YES' : 'NO', g.is_proxy || g.is_vpn]);
+        rows.push(['TOR Node',             g.is_tor   ? '⚠ YES' : 'NO', g.is_tor]);
+        if (g.is_relay)    rows.push(['Relay',          '⚠ YES', true]);
+        rows.push(['Mobile Network',       g.is_mobile  ? 'YES' : 'NO']);
+        rows.push(['Usage Type',           g.usage_type || '—']);
+        if (g.abuse_contact) rows.push(['Abuse Contact', g.abuse_contact]);
+        addKvRows(nwGrid, rows);
     } else {
         document.getElementById('network-panel').style.display = 'none';
     }
@@ -396,6 +412,22 @@ function renderResults(data) {
     } else {
         document.getElementById('abuse-panel').style.display = 'none';
     }
+
+    // 🆕 Shodan InternetDB panel
+    const shodan = data.shodan;
+    renderShodanPanel(shodan);
+
+    // AlienVault OTX panel
+    const otx = data.otx;
+    renderOtxPanel(otx);
+
+    // 🆕 URLScan panel (URL scans only)
+    const urlscan = data.urlscan;
+    renderUrlscanPanel(urlscan);
+
+    // 🆕 Google Safe Browsing panel
+    const gsb = data.google_sb;
+    renderGsbPanel(gsb);
 
     // Engines
     allEngineData = data.engines || {};
@@ -418,6 +450,171 @@ function addKvRows(container, rows) {
         row.appendChild(k);
         row.appendChild(v);
         container.appendChild(row);
+    });
+}
+
+// ── SHODAN INTERNETDB PANEL ────────────────────────────────────────────────
+function renderShodanPanel(shodan) {
+    const panel = document.getElementById('shodan-panel');
+    if (!panel) return;
+    if (!shodan || (!shodan.open_ports?.length && !shodan.vulns?.length)) {
+        panel.style.display = 'none'; return;
+    }
+    panel.style.display = 'block';
+
+    const portsEl = document.getElementById('shodan-ports');
+    const vulnsEl = document.getElementById('shodan-vulns');
+    const hostsEl = document.getElementById('shodan-hosts');
+    const tagsEl  = document.getElementById('shodan-tags');
+
+    portsEl.innerHTML = '';
+    (shodan.open_ports || []).forEach(port => {
+        const span = document.createElement('span');
+        span.className = 'tag-chip tag-port';
+        span.textContent = port;
+        portsEl.appendChild(span);
+    });
+
+    vulnsEl.innerHTML = '';
+    (shodan.vulns || []).forEach(cve => {
+        const span = document.createElement('span');
+        span.className = 'tag-chip tag-vuln';
+        span.textContent = cve;
+        vulnsEl.appendChild(span);
+    });
+
+    hostsEl.textContent = (shodan.hostnames || []).join(', ') || '—';
+
+    tagsEl.innerHTML = '';
+    (shodan.tags || []).forEach(tag => {
+        const span = document.createElement('span');
+        span.className = 'tag-chip tag-info';
+        span.textContent = tag;
+        tagsEl.appendChild(span);
+    });
+}
+
+// ── ALIENVAULT OTX PANEL ───────────────────────────────────────────────────
+function renderOtxPanel(otx) {
+    const panel = document.getElementById('otx-panel');
+    if (!panel) return;
+    if (!otx || otx.count === undefined) {
+        panel.style.display = 'none'; return;
+    }
+    panel.style.display = 'block';
+
+    const countEl = document.getElementById('otx-pulse-count');
+    countEl.textContent = String(otx.count);
+    countEl.style.color = otx.count > 0 ? 'var(--danger)' : 'var(--success)';
+
+    const pulsesEl = document.getElementById('otx-pulses');
+    pulsesEl.innerHTML = '';
+    
+    if (otx.count === 0) {
+        pulsesEl.innerHTML = '<div class="text-muted mt-2">No known threat campaigns associated with this indicator.</div>';
+    } else {
+        (otx.pulses || []).forEach(p => {
+            const pulseDiv = document.createElement('div');
+            pulseDiv.className = 'otx-pulse-item mt-2 pb-2';
+            pulseDiv.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+            
+            const name = document.createElement('div');
+            name.style.color = 'var(--warning)';
+            name.style.fontWeight = 'bold';
+            name.textContent = p.name;
+            
+            const desc = document.createElement('div');
+            desc.className = 'text-sm text-muted mt-1';
+            desc.textContent = p.description || 'No description provided.';
+            
+            const meta = document.createElement('div');
+            meta.className = 'text-xs text-faint mt-1';
+            meta.textContent = `Author: ${p.author} | Created: ${p.created ? new Date(p.created).toLocaleDateString() : 'Unknown'}`;
+            
+            pulseDiv.appendChild(name);
+            pulseDiv.appendChild(desc);
+            pulseDiv.appendChild(meta);
+            
+            if (p.tags && p.tags.length > 0) {
+                const tagsDiv = document.createElement('div');
+                tagsDiv.className = 'tag-row mt-1';
+                p.tags.slice(0, 5).forEach(tag => {
+                    const span = document.createElement('span');
+                    span.className = 'tag-chip tag-info';
+                    span.textContent = tag;
+                    tagsDiv.appendChild(span);
+                });
+                pulseDiv.appendChild(tagsDiv);
+            }
+            
+            pulsesEl.appendChild(pulseDiv);
+        });
+    }
+}
+
+// ── URLSCAN PANEL ──────────────────────────────────────────────────────────
+function renderUrlscanPanel(us) {
+    const panel = document.getElementById('urlscan-panel');
+    if (!panel) return;
+    if (!us || !us.scan_id) {
+        panel.style.display = 'none'; return;
+    }
+    panel.style.display = 'block';
+
+    const screenshotEl = document.getElementById('urlscan-screenshot');
+    if (us.screenshot) {
+        const img = document.createElement('img');
+        img.src = us.screenshot;
+        img.alt = 'URL Screenshot';
+        img.className = 'urlscan-img';
+        img.onerror = () => { img.style.display = 'none'; };
+        screenshotEl.innerHTML = '';
+        screenshotEl.appendChild(img);
+    }
+
+    const techEl = document.getElementById('urlscan-tech');
+    techEl.innerHTML = '';
+    (us.technologies || []).forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'tag-chip tag-info';
+        span.textContent = t;
+        techEl.appendChild(span);
+    });
+
+    const usGrid = document.getElementById('urlscan-grid');
+    usGrid.innerHTML = '';
+    addKvRows(usGrid, [
+        ['Server IP',      us.ip         || '—'],
+        ['Server',         us.server     || '—'],
+        ['TLS Issuer',     us.tlsIssuer  || '—'],
+        ['Page Title',     us.title      || '—'],
+        ['Country',        us.country    || '—'],
+        ['ASN',            us.asnname    || '—'],
+        ['Malicious',      us.malicious  ? '⚠ YES' : 'NO', us.malicious],
+        ['Verdict Score',  String(us.score || 0)],
+    ]);
+}
+
+// ── GOOGLE SAFE BROWSING PANEL ────────────────────────────────────────────
+function renderGsbPanel(gsb) {
+    const panel = document.getElementById('gsb-panel');
+    if (!panel) return;
+    if (!gsb || Object.keys(gsb).length === 0) {
+        panel.style.display = 'none'; return;
+    }
+    panel.style.display = 'block';
+    const safe = gsb.safe !== false;
+    const statusEl = document.getElementById('gsb-status');
+    statusEl.textContent = safe ? '✅ SAFE' : '🚨 UNSAFE — Google Flagged';
+    statusEl.style.color = safe ? 'var(--success)' : 'var(--danger)';
+
+    const threatsEl = document.getElementById('gsb-threats');
+    threatsEl.innerHTML = '';
+    (gsb.threats || []).forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'tag-chip tag-vuln';
+        span.textContent = t.replace(/_/g, ' ');
+        threatsEl.appendChild(span);
     });
 }
 

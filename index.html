@@ -234,29 +234,82 @@
 
                         <!-- Secondary Metrics Grid -->
                         <div class="details-layout mt-4">
-                            <!-- Left Col: Network + Abuse -->
+                            <!-- Left Col: Network + Abuse + Shodan + GreyNoise -->
                             <div class="left-col">
                                 <div class="glass-panel p-4 mb-4" id="network-panel">
                                     <h3 class="font-display mb-3 text-accent">🌐 Network Intelligence</h3>
                                     <div class="kv-grid" id="network-grid"></div>
                                 </div>
-                                <div class="glass-panel p-4" id="abuse-panel">
+                                <div class="glass-panel p-4 mb-4" id="abuse-panel">
                                     <h3 class="font-display mb-3 text-danger">⚠️ AbuseIPDB Telemetry</h3>
                                     <div class="kv-grid" id="abuse-grid"></div>
                                 </div>
-                            </div>
-
-                            <!-- Right Col: Security Engines -->
-                            <div class="right-col glass-panel p-4">
-                                <div class="d-flex justify-between align-center mb-4">
-                                    <h3 class="font-display text-accent">Security Engines (<span id="engine-cnt">0</span>)</h3>
-                                    <div class="filter-btns" role="group" aria-label="Filter engines">
-                                        <button class="filter-btn font-mono active" id="filter-all" onclick="filterEngines('all')">ALL</button>
-                                        <button class="filter-btn font-mono" id="filter-malicious" onclick="filterEngines('malicious')">🔴 MALICIOUS</button>
-                                        <button class="filter-btn font-mono" id="filter-clean" onclick="filterEngines('clean')">🟢 CLEAN</button>
+                                <!-- 🆕 Shodan InternetDB -->
+                                <div class="glass-panel p-4 mb-4" id="shodan-panel" style="display:none;">
+                                    <h3 class="font-display mb-3" style="color:var(--warning)">🔎 Shodan — Open Ports &amp; Vulnerabilities</h3>
+                                    <div class="kv-grid">
+                                        <div class="kv-row"><span>Hostnames</span><span id="shodan-hosts" class="font-mono">—</span></div>
+                                    </div>
+                                    <div class="intel-section mt-3">
+                                        <div class="intel-label font-mono">OPEN PORTS</div>
+                                        <div class="tag-row" id="shodan-ports"></div>
+                                    </div>
+                                    <div class="intel-section mt-3">
+                                        <div class="intel-label font-mono text-danger">CVE VULNERABILITIES</div>
+                                        <div class="tag-row" id="shodan-vulns"></div>
+                                    </div>
+                                    <div class="intel-section mt-3">
+                                        <div class="intel-label font-mono">TAGS</div>
+                                        <div class="tag-row" id="shodan-tags"></div>
                                     </div>
                                 </div>
-                                <div class="engines-list" id="engines-list"></div>
+                                <!-- AlienVault OTX -->
+                                <div class="glass-panel p-4" id="otx-panel" style="display:none;">
+                                    <h3 class="font-display mb-3" style="color:var(--primary)">📡 AlienVault OTX — Threat Intelligence</h3>
+                                    <div class="kv-grid">
+                                        <div class="kv-row"><span>Threat Pulses Found</span><span id="otx-pulse-count" class="font-mono font-display">—</span></div>
+                                    </div>
+                                    <div class="intel-section mt-3">
+                                        <div class="intel-label font-mono">ACTIVE PULSES / THREAT CAMPAIGNS</div>
+                                        <div id="otx-pulses" class="font-mono text-sm"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Col: Engines + URLScan + Google SB -->
+                            <div class="right-col">
+                                <div class="glass-panel p-4 mb-4">
+                                    <div class="d-flex justify-between align-center mb-4">
+                                        <h3 class="font-display text-accent">Security Engines (<span id="engine-cnt">0</span>)</h3>
+                                        <div class="filter-btns" role="group" aria-label="Filter engines">
+                                            <button class="filter-btn font-mono active" id="filter-all" onclick="filterEngines('all')">ALL</button>
+                                            <button class="filter-btn font-mono" id="filter-malicious" onclick="filterEngines('malicious')">🔴 MALICIOUS</button>
+                                            <button class="filter-btn font-mono" id="filter-clean" onclick="filterEngines('clean')">🟢 CLEAN</button>
+                                        </div>
+                                    </div>
+                                    <div class="engines-list" id="engines-list"></div>
+                                </div>
+                                <!-- 🆕 URLScan.io -->
+                                <div class="glass-panel p-4 mb-4" id="urlscan-panel" style="display:none;">
+                                    <h3 class="font-display mb-3" style="color:var(--accent)">🖥️ URLScan.io — Page Analysis</h3>
+                                    <div id="urlscan-screenshot" class="mb-3"></div>
+                                    <div class="intel-section mb-3">
+                                        <div class="intel-label font-mono">DETECTED TECHNOLOGIES</div>
+                                        <div class="tag-row" id="urlscan-tech"></div>
+                                    </div>
+                                    <div class="kv-grid" id="urlscan-grid"></div>
+                                </div>
+                                <!-- 🆕 Google Safe Browsing -->
+                                <div class="glass-panel p-4" id="gsb-panel" style="display:none;">
+                                    <h3 class="font-display mb-3" style="color:var(--success)">🔒 Google Safe Browsing</h3>
+                                    <div class="kv-grid">
+                                        <div class="kv-row"><span>Verdict</span><span id="gsb-status" class="font-mono font-display">—</span></div>
+                                    </div>
+                                    <div class="intel-section mt-3">
+                                        <div class="intel-label font-mono text-danger">THREAT TYPES</div>
+                                        <div class="tag-row" id="gsb-threats"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

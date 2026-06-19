@@ -369,3 +369,25 @@ body {
 /* Pulse animation for glow effect button */
 @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 10px var(--primary-glow); } 50% { box-shadow: 0 0 25px var(--primary-glow), 0 0 50px rgba(0,212,255,0.2); } }
 .glow-effect { animation: glowPulse 3s infinite; }
+
+/* ================= NEW INTEL PANELS ================= */
+.intel-section { margin-top: 12px; }
+.intel-label { font-size: 0.7rem; letter-spacing: 1.5px; color: var(--text-faint); margin-bottom: 8px; }
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.tag-chip {
+    font-family: 'Fira Code', monospace; font-size: 0.72rem; padding: 3px 10px;
+    border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;
+}
+.tag-port { background: rgba(0, 212, 255, 0.12); color: var(--primary); border: 1px solid rgba(0,212,255,0.3); }
+.tag-vuln { background: rgba(255, 68, 68, 0.12); color: var(--danger);  border: 1px solid rgba(255,68,68,0.3); }
+.tag-info { background: rgba(168, 85, 247, 0.12); color: var(--accent); border: 1px solid rgba(168,85,247,0.3); }
+
+/* URLScan screenshot */
+.urlscan-img {
+    width: 100%; border-radius: 8px; border: 1px solid var(--border-light);
+    max-height: 220px; object-fit: cover; display: block;
+    transition: 0.3s; cursor: zoom-in;
+}
+.urlscan-img:hover { opacity: 0.9; }
+
