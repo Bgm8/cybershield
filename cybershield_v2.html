@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CyberShield — AI Threat Intelligence</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04070f;--bg2:#080d1a;--bg3:#0c1220;
+  --border:#0d2040;--border2:#1a3a5c;
+  --blue:#00d4ff;--blue2:#0055ff;
+  --green:#00ff88;--red:#ff4444;--orange:#ffaa00;--purple:#a855f7;
+  --text:#e2eaf4;--text2:#8aa6c8;--text3:#2a5a8a;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);min-height:100vh;overflow-x:hidden}
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#0d2040;border-radius:3px}
+/* animations */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes glow{0%,100%{box-shadow:0 0 10px rgba(0,212,255,.3)}50%{box-shadow:0 0 30px rgba(0,212,255,.7)}}
+@keyframes scan{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes countup{from{opacity:0}to{opacity:1}}
+
+/* SCANLINE EFFECT */
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--blue),transparent);
+  animation:scan 4s linear infinite;opacity:.15;pointer-events:none;z-index:9999}
+
+/* HEADER */
+#header{
+  background:linear-gradient(90deg,var(--bg) 0%,#0a1628 40%,#0a1628 60%,var(--bg) 100%);
+  border-bottom:1px solid var(--border);
+  padding:0 32px;height:70px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(10px);
+}
+#logo{display:flex;align-items:center;gap:14px}
+#logo-shield{
+  width:46px;height:46px;
+  background:linear-gradient(135deg,var(--blue2),var(--blue));
+  border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:24px;animation:glow 3s ease-in-out infinite;
+  box-shadow:0 0 20px rgba(0,212,255,.4);
+}
+#logo-text{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;
+  background:linear-gradient(135deg,var(--blue),#ffffff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:3px}
+#logo-sub{font-size:10px;color:var(--text3);letter-spacing:4px;font-family:'Share Tech Mono',monospace}
+#header-right{display:flex;align-items:center;gap:16px}
+#status-pill{
+  display:flex;align-items:center;gap:8px;padding:8px 16px;
+  border-radius:20px;border:1px solid var(--border2);
+  cursor:pointer;transition:.3s;font-family:'Share Tech Mono',monospace;
+  background:rgba(255,255,255,.02);
+}
+#status-dot{width:8px;height:8px;border-radius:50%;background:#4a6fa5;transition:.3s;flex-shrink:0}
+#status-text{font-size:11px;letter-spacing:1px;color:var(--text3)}
+
+/* HERO STATS BAR */
+#stats-bar{
+  background:linear-gradient(90deg,var(--bg2),#0a1628,var(--bg2));
+  border-bottom:1px solid var(--border);
+  padding:12px 32px;display:flex;gap:32px;align-items:center;
+  overflow-x:auto;
+}
+.stat-item{display:flex;align-items:center;gap:10px;white-space:nowrap;flex-shrink:0}
+.stat-icon{font-size:18px}
+.stat-info{}
+.stat-val{font-size:18px;font-weight:700;font-family:'Orbitron',monospace;color:var(--blue)}
+.stat-lbl{font-size:9px;color:var(--text3);letter-spacing:2px}
+
+/* TABS */
+#tabs{
+  display:flex;border-bottom:1px solid var(--border);
+  background:var(--bg2);padding:0 32px;overflow-x:auto;
+}
+.tab{
+  background:none;border:none;
+  border-bottom:2px solid transparent;
+  color:var(--text3);padding:16px 22px;
+  cursor:pointer;font-size:12px;letter-spacing:2px;
+  transition:.2s;white-space:nowrap;font-family:'Share Tech Mono',monospace;
+}
+.tab:hover{color:var(--text2)}
+.tab.active{border-bottom-color:var(--blue);color:var(--blue)}
+
+/* CONTENT */
+#content{padding:32px;max-width:1100px;margin:0 auto}
+.panel{display:none;animation:fadeIn .3s ease}.panel.active{display:block}
+
+/* SCAN BOX */
+#scan-hero{
+  background:linear-gradient(135deg,rgba(0,85,255,.08),rgba(0,212,255,.05));
+  border:1px solid var(--border2);border-radius:20px;
+  padding:36px;margin-bottom:28px;
+  position:relative;overflow:hidden;
+}
+#scan-hero::before{
+  content:'';position:absolute;top:-50%;left:-50%;
+  width:200%;height:200%;
+  background:radial-gradient(circle at center,rgba(0,212,255,.04) 0%,transparent 60%);
+  pointer-events:none;
+}
+#scan-title{font-family:'Orbitron',monospace;font-size:13px;color:var(--blue);
+  letter-spacing:4px;margin-bottom:20px}
+.scan-type-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.type-btn{
+  padding:10px 24px;border-radius:10px;cursor:pointer;
+  font-size:12px;letter-spacing:1px;transition:.2s;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  color:var(--text3);font-family:'Share Tech Mono',monospace;
+}
+.type-btn:hover{border-color:var(--border2);color:var(--text2)}
+.type-btn.active{
+  background:linear-gradient(135deg,rgba(0,85,255,.2),rgba(0,212,255,.1));
+  border-color:var(--blue);color:var(--blue);
+  box-shadow:0 0 15px rgba(0,212,255,.15);
+}
+#input-wrap{display:flex;gap:12px;position:relative}
+#target-input{
+  flex:1;background:rgba(0,0,0,.5);
+  border:1px solid var(--border2);border-radius:12px;
+  padding:16px 20px;color:var(--blue);
+  font-size:15px;font-family:'Share Tech Mono',monospace;
+  outline:none;transition:.3s;
+}
+#target-input:focus{border-color:var(--blue);box-shadow:0 0 20px rgba(0,212,255,.1)}
+#target-input::placeholder{color:var(--text3)}
+#scan-btn{
+  padding:16px 36px;
+  background:linear-gradient(135deg,var(--blue2),var(--blue));
+  border:none;border-radius:12px;color:#fff;
+  cursor:pointer;font-size:13px;font-weight:700;letter-spacing:2px;
+  box-shadow:0 0 25px rgba(0,212,255,.3);
+  transition:.2s;font-family:'Orbitron',monospace;
+  white-space:nowrap;
+}
+#scan-btn:hover{transform:translateY(-1px);box-shadow:0 0 35px rgba(0,212,255,.5)}
+#scan-btn:disabled{background:#0d1f3c;box-shadow:none;cursor:not-allowed;transform:none}
+.quick-targets{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.quick-btn{
+  padding:5px 12px;background:rgba(255,255,255,.03);
+  border:1px solid var(--border);border-radius:6px;
+  color:var(--text3);font-size:11px;cursor:pointer;
+  transition:.2s;font-family:'Share Tech Mono',monospace;
+}
+.quick-btn:hover{border-color:var(--border2);color:var(--text2)}
+#error-msg{margin-top:12px;color:var(--red);font-size:13px;display:none;font-family:'Share Tech Mono',monospace}
+
+/* LOG */
+#log-box{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:12px;padding:16px;
+  max-height:150px;overflow-y:auto;margin-bottom:20px;display:none;
+  font-family:'Share Tech Mono',monospace;
+}
+.log-line{font-size:11px;line-height:2}
+.log-time{color:var(--text3);margin-right:10px}
+
+/* RESULTS */
+#results{display:none}
+
+/* THREAT BANNER */
+#threat-banner{
+  border-radius:20px;padding:28px 32px;
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:20px;position:relative;overflow:hidden;
+}
+#threat-banner::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:40%;
+  background:linear-gradient(90deg,transparent,rgba(0,0,0,.3));
+}
+#verdict-wrap{}
+#verdict-type{font-size:11px;color:var(--text3);letter-spacing:3px;
+  font-family:'Share Tech Mono',monospace;margin-bottom:8px}
+#verdict-text{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;margin-bottom:8px}
+#verdict-target{font-size:13px;color:var(--text2);font-family:'Share Tech Mono',monospace}
+#verdict-time{font-size:11px;color:var(--text3);margin-top:4px;font-family:'Share Tech Mono',monospace}
+#gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;z-index:1}
+#gauge{
+  width:100px;height:100px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+}
+#gauge-inner{
+  width:74px;height:74px;border-radius:50%;
+  background:var(--bg);display:flex;
+  align-items:center;justify-content:center;flex-direction:column;
+}
+#gauge-num{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;line-height:1}
+#gauge-lbl{font-size:8px;color:var(--text3);letter-spacing:2px;margin-top:2px}
+#gauge-sublbl{font-size:10px;color:var(--text3);font-family:'Share Tech Mono',monospace}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px}
+.mini-stat{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;padding:18px 16px;text-align:center;
+  transition:.2s;
+}
+.mini-stat:hover{border-color:var(--border2);transform:translateY(-2px)}
+.mini-stat-val{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;line-height:1;margin-bottom:6px}
+.mini-stat-lbl{font-size:9px;color:var(--text3);letter-spacing:2px;font-family:'Share Tech Mono',monospace}
+
+/* DETAIL SECTIONS */
+.section-title{
+  font-family:'Share Tech Mono',monospace;font-size:11px;
+  color:var(--text3);letter-spacing:3px;margin-bottom:16px;
+  display:flex;align-items:center;gap:10px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.cards-grid{display:grid;gap:16px;grid-template-columns:1fr 1fr;margin-bottom:20px}
+.detail-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:16px;padding:22px;
+}
+.detail-card-title{
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--text3);letter-spacing:2px;margin-bottom:16px;
+  display:flex;align-items:center;gap:8px;
+}
+.drow{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid rgba(13,32,64,.8);
+}
+.drow:last-child{border-bottom:none}
+.drow-key{font-size:12px;color:var(--text2)}
+.drow-val{font-size:12px;color:var(--text);font-family:'Share Tech Mono',monospace;text-align:right;max-width:55%}
+.vbadge{font-size:10px;padding:3px 10px;border-radius:5px;font-family:'Share Tech Mono',monospace;font-weight:bold}
+
+/* ENGINES TABLE */
+#engines-section{margin-bottom:20px}
+.engines-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:8px;
+}
+.engine-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;transition:.15s;
+}
+.engine-row:hover{border-color:var(--border2)}
+.engine-name{font-size:12px;color:var(--text2);font-family:'Share Tech Mono',monospace}
+
+/* THREAT INTEL SECTION */
+.intel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.intel-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;padding:18px;
+}
+.intel-icon{font-size:24px;margin-bottom:10px}
+.intel-label{font-size:10px;color:var(--text3);letter-spacing:2px;font-family:'Share Tech Mono',monospace;margin-bottom:6px}
+.intel-value{font-size:14px;color:var(--text);font-weight:600}
+.intel-sub{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* HISTORY */
+.hist-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;margin-bottom:10px;transition:.2s;cursor:pointer;
+}
+.hist-row:hover{border-color:var(--border2);transform:translateX(3px)}
+.hist-icon{font-size:20px;margin-right:14px;flex-shrink:0}
+.hist-target{font-size:14px;color:var(--text);font-family:'Share Tech Mono',monospace}
+.hist-meta{font-size:11px;color:var(--text3);margin-top:3px}
+.badge{padding:5px 14px;border-radius:8px;font-size:11px;font-family:'Share Tech Mono',monospace;font-weight:bold}
+
+/* OFFLINE BANNER */
+#offline-banner{
+  display:none;
+  background:rgba(255,68,68,.05);border:1px solid rgba(255,68,68,.25);
+  margin:16px 32px 0;border-radius:14px;padding:20px 24px;
+}
+#offline-banner h3{color:var(--red);font-size:14px;margin-bottom:12px;font-family:'Orbitron',monospace}
+.code-block{
+  background:var(--bg);border-radius:10px;padding:16px;
+  font-size:12px;color:var(--green);line-height:2.2;
+  white-space:pre;overflow-x:auto;font-family:'Share Tech Mono',monospace;
+  border:1px solid var(--border);
+}
+.cc{color:var(--text3)}
+
+/* SETUP */
+.setup-step{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px}
+.step-hdr{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.step-num{
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--blue);font-weight:bold;flex-shrink:0;
+  font-family:'Orbitron',monospace;
+}
+.step-title{color:var(--blue);font-size:14px;font-weight:600}
+.step-desc{font-size:13px;color:var(--text2);line-height:1.8}
+
+/* SPINNER */
+.spinner{
+  width:20px;height:20px;border:2px solid rgba(0,212,255,.2);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:spin 1s linear infinite;display:inline-block;
+  vertical-align:middle;margin-right:8px;
+}
+
+/* TOOLTIP */
+.tooltip{position:relative}
+.tooltip:hover .tip{display:block}
+.tip{
+  display:none;position:absolute;bottom:120%;left:50%;
+  transform:translateX(-50%);background:#0d1f3c;
+  border:1px solid var(--border2);color:var(--text2);
+  font-size:11px;padding:6px 12px;border-radius:6px;
+  white-space:nowrap;z-index:10;font-family:'Share Tech Mono',monospace;
+}
+
+/* RESPONSIVE */
+@media(max-width:700px){
+  #header{padding:0 16px}
+  #content{padding:16px}
+  #scan-hero{padding:20px}
+  .cards-grid{grid-template-columns:1fr}
+  #input-wrap{flex-direction:column}
+  #verdict-text{font-size:18px}
+  #stats-bar{padding:12px 16px;gap:20px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="logo">
+    <div id="logo-shield">🛡️</div>
+    <div>
+      <div id="logo-text">CYBERSHIELD</div>
+      <div id="logo-sub">AI THREAT INTELLIGENCE</div>
+    </div>
+  </div>
+  <div id="header-right">
+    <div id="status-pill" onclick="checkBackend()" title="Click to recheck connection">
+      <div id="status-dot"></div>
+      <span id="status-text">CONNECTING...</span>
+      <span style="font-size:11px;color:var(--text3);margin-left:4px">↺</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div id="stats-bar">
+  <div class="stat-item">
+    <span class="stat-icon">🔬</span>
+    <div class="stat-info">
+      <div class="stat-val">91+</div>
+      <div class="stat-lbl">SECURITY ENGINES</div>
+    </div>
+  </div>
+  <div class="stat-item">
+    <span class="stat-icon">🌐</span>
+    <div class="stat-info">
+      <div class="stat-val">LIVE</div>
+      <div class="stat-lbl">THREAT INTEL</div>
+    </div>
+  </div>
+  <div class="stat-item">
+    <span class="stat-icon">🚨</span>
+    <div class="stat-info">
+      <div class="stat-val" id="scan-count">0</div>
+      <div class="stat-lbl">SCANS THIS SESSION</div>
+    </div>
+  </div>
+  <div class="stat-item">
+    <span class="stat-icon">⚡</span>
+    <div class="stat-info">
+      <div class="stat-val">REAL-TIME</div>
+      <div class="stat-lbl">API INTEGRATION</div>
+    </div>
+  </div>
+  <div class="stat-item" style="margin-left:auto">
+    <span style="font-size:11px;color:var(--text3);font-family:'Share Tech Mono',monospace">
+      POWERED BY VIRUSTOTAL + ABUSEIPDB + IP-API
+    </span>
+  </div>
+</div>
+
+<!-- OFFLINE BANNER -->
+<div id="offline-banner">
+  <h3>⚠️ BACKEND OFFLINE</h3>
+  <div class="code-block"><span class="cc"># CMD Window 1 — Start backend:</span>
+cd C:\Users\sidda\cybershield\backend
+venv\Scripts\activate
+uvicorn main:app --reload --port 8080 --host 0.0.0.0
+
+<span class="cc"># CMD Window 2 — Start file server:</span>
+python -m http.server 3000
+
+<span class="cc"># Open Chrome at:</span>
+http://localhost:3000/cybershield_v2.html</div>
+</div>
+
+<!-- TABS -->
+<div id="tabs">
+  <button class="tab active" onclick="switchTab('scanner',this)">⚡ SCANNER</button>
+  <button class="tab" onclick="switchTab('history',this)">📋 HISTORY</button>
+  <button class="tab" onclick="switchTab('hosting',this)">🌐 FREE HOSTING</button>
+  <button class="tab" onclick="switchTab('attack',this)">⚔️ ATTACK & DEFEND</button>
+  <button class="tab" onclick="switchTab('setup',this)">🔧 SETUP</button>
+</div>
+
+<div id="content">
+
+<!-- ══════════════ SCANNER ══════════════ -->
+<div id="panel-scanner" class="panel active">
+
+  <div id="scan-hero">
+    <div id="scan-title">🔍 THREAT INTELLIGENCE SCANNER</div>
+
+    <div class="scan-type-row">
+      <button class="type-btn active" id="btn-url" onclick="setScanType('url')">🔗 URL / Domain</button>
+      <button class="type-btn" id="btn-ip" onclick="setScanType('ip')">🌐 IP Address</button>
+    </div>
+
+    <div id="input-wrap">
+      <input id="target-input" placeholder="Enter URL, domain, or IP address..."
+        onkeydown="if(event.key==='Enter')runScan()"/>
+      <button id="scan-btn" onclick="runScan()">⚡ SCAN NOW</button>
+    </div>
+
+    <div id="error-msg"></div>
+
+    <div class="quick-targets">
+      <span style="font-size:11px;color:var(--text3);font-family:'Share Tech Mono',monospace;align-self:center">QUICK TEST →</span>
+      <button class="quick-btn" onclick="quickScan('google.com','url')">google.com</button>
+      <button class="quick-btn" onclick="quickScan('8.8.8.8','ip')">8.8.8.8 (Google DNS)</button>
+      <button class="quick-btn" onclick="quickScan('103.235.46.102','ip')">103.235.46.102 (Threat)</button>
+      <button class="quick-btn" onclick="quickScan('1.1.1.1','ip')">1.1.1.1 (Cloudflare)</button>
+      <button class="quick-btn" onclick="quickScan('malware.testing.google.test/testing/malware/','url')">Malware Test URL</button>
+    </div>
+  </div>
+
+  <!-- LIVE LOG -->
+  <div id="log-box"></div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <!-- THREAT BANNER -->
+    <div id="threat-banner">
+      <div id="verdict-wrap">
+        <div id="verdict-type">THREAT ASSESSMENT</div>
+        <div id="verdict-text"></div>
+        <div id="verdict-target"></div>
+        <div id="verdict-time"></div>
+      </div>
+      <div id="gauge-wrap">
+        <div id="gauge">
+          <div id="gauge-inner">
+            <div id="gauge-num"></div>
+            <div id="gauge-lbl">RISK</div>
+          </div>
+        </div>
+        <div id="gauge-sublbl">/100 SCORE</div>
+      </div>
+    </div>
+
+    <!-- MINI STATS -->
+    <div id="mini-stats" class="stats-grid"></div>
+
+    <!-- INTEL CARDS -->
+    <div class="section-title">📡 THREAT INTELLIGENCE OVERVIEW</div>
+    <div id="intel-grid" class="intel-grid"></div>
+
+    <!-- DETAILS -->
+    <div class="section-title">📊 DETAILED ANALYSIS</div>
+    <div id="cards-grid" class="cards-grid"></div>
+
+    <!-- ALL ENGINES -->
+    <div id="engines-section">
+      <div class="section-title">🔬 ALL ENGINE RESULTS</div>
+      <div id="engines-grid" class="engines-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ HISTORY ══════════════ -->
+<div id="panel-history" class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--blue)">SCAN HISTORY</div>
+    <button onclick="history=[];renderHistory()" style="background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:11px;font-family:'Share Tech Mono',monospace">CLEAR ALL</button>
+  </div>
+  <div id="hist-list">
+    <div style="text-align:center;padding:80px;background:var(--bg2);border:1px solid var(--border);border-radius:16px">
+      <div style="font-size:48px;margin-bottom:16px">📋</div>
+      <div style="color:var(--text3);font-size:14px;font-family:'Share Tech Mono',monospace">No scans yet. Run your first scan!</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ FREE HOSTING ══════════════ -->
+<div id="panel-hosting" class="panel">
+  <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--blue);margin-bottom:24px">🌐 HOST CYBERSHIELD FOR FREE</div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px">
+
+    <div class="setup-step" style="border-color:rgba(0,212,255,.3)">
+      <div class="step-hdr">
+        <div style="font-size:28px">🚀</div>
+        <div>
+          <div class="step-title">Option 1 — Railway (BEST)</div>
+          <div style="font-size:11px;color:var(--green);font-family:'Share Tech Mono',monospace">FREE · Always On · Custom Domain</div>
+        </div>
+      </div>
+      <div class="code-block"><span class="cc"># Install Railway CLI:</span>
+npm install -g @railway/cli
+
+<span class="cc"># Login & deploy:</span>
+railway login
+railway init
+railway up
+
+<span class="cc"># Your app goes live at:</span>
+https://cybershield.railway.app</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2)">✅ Free $5/month credit · Python supported · Auto HTTPS · Easy env vars</div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-hdr">
+        <div style="font-size:28px">🎯</div>
+        <div>
+          <div class="step-title">Option 2 — Render.com</div>
+          <div style="font-size:11px;color:var(--orange);font-family:'Share Tech Mono',monospace">FREE · Sleeps after 15min inactive</div>
+        </div>
+      </div>
+      <div class="code-block"><span class="cc"># 1. Push code to GitHub</span>
+git init
+git add .
+git commit -m "CyberShield v1"
+git push origin main
+
+<span class="cc"># 2. Go to render.com</span>
+<span class="cc"># 3. New → Web Service → Connect GitHub</span>
+<span class="cc"># 4. Build: pip install -r requirements.txt</span>
+<span class="cc"># 5. Start: uvicorn main:app --host 0.0.0.0 --port $PORT</span></div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-hdr">
+        <div style="font-size:28px">⚡</div>
+        <div>
+          <div class="step-title">Option 3 — Vercel (Frontend)</div>
+          <div style="font-size:11px;color:var(--green);font-family:'Share Tech Mono',monospace">FREE · Instant · Global CDN</div>
+        </div>
+      </div>
+      <div class="code-block"><span class="cc"># For the HTML frontend only:</span>
+npm install -g vercel
+
+vercel login
+vercel deploy cybershield_v2.html
+
+<span class="cc"># Goes live at:</span>
+https://cybershield.vercel.app</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2)">Frontend on Vercel + Backend on Railway = Perfect combo</div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-hdr">
+        <div style="font-size:28px">🐙</div>
+        <div>
+          <div class="step-title">Option 4 — GitHub Pages</div>
+          <div style="font-size:11px;color:var(--green);font-family:'Share Tech Mono',monospace">FREE · HTML only · Forever free</div>
+        </div>
+      </div>
+      <div class="code-block"><span class="cc"># Create GitHub repo: cybershield</span>
+<span class="cc"># Upload cybershield_v2.html as index.html</span>
+<span class="cc"># Go to Settings → Pages → Deploy from main</span>
+
+<span class="cc"># Live at:</span>
+https://yourusername.github.io/cybershield</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2)">⚠️ Update BACKEND url to your Railway/Render URL first</div>
+    </div>
+  </div>
+
+  <div class="setup-step" style="border-color:rgba(0,255,136,.3)">
+    <div class="step-hdr"><div class="step-num">📋</div><div class="step-title">Files You Need for Deployment</div></div>
+    <div class="code-block"><span class="cc"># Your project structure should look like:</span>
+cybershield/
+├── backend/
+│   ├── main.py            ← FastAPI backend
+│   ├── requirements.txt   ← Python packages
+│   ├── .env               ← API keys (NEVER upload to GitHub)
+│   └── Procfile           ← For Railway/Render
+└── frontend/
+    └── index.html         ← cybershield_v2.html renamed
+
+<span class="cc"># Create Procfile (for Railway/Render):</span>
+web: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+<span class="cc"># Create .gitignore (CRITICAL — protects API keys):</span>
+.env
+__pycache__/
+venv/
+*.pyc</div>
+  </div>
+</div>
+
+<!-- ══════════════ ATTACK & DEFEND ══════════════ -->
+<div id="panel-attack" class="panel">
+  <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--red);margin-bottom:8px">⚔️ ATTACK & DEFEND LAB</div>
+  <div style="font-size:13px;color:var(--text3);margin-bottom:24px;font-family:'Share Tech Mono',monospace">
+    Learn by doing — legally test your own app's security
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+    <!-- ATTACK SIDE -->
+    <div>
+      <div style="font-family:'Orbitron',monospace;font-size:13px;color:var(--red);margin-bottom:14px;letter-spacing:2px">🔴 ATTACK SCENARIOS</div>
+
+      <div class="setup-step" style="border-color:rgba(255,68,68,.3)">
+        <div class="step-hdr"><div style="font-size:20px">💉</div><div class="step-title" style="color:var(--red)">1. API Rate Limit Attack</div></div>
+        <div class="code-block"><span class="cc"># Flood your API with requests (run in CMD):</span>
+<span class="cc"># Install: pip install requests</span>
+
+python -c "
+import requests, time
+url = 'http://localhost:8080/scan'
+for i in range(100):
+    r = requests.post(url, json={
+        'target': f'test{i}.com',
+        'scan_type': 'url'
+    })
+    print(f'Request {i}: {r.status_code}')
+"</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2)">Goal: See if your API crashes under load</div>
+      </div>
+
+      <div class="setup-step" style="border-color:rgba(255,68,68,.3)">
+        <div class="step-hdr"><div style="font-size:20px">🎯</div><div class="step-title" style="color:var(--red)">2. Input Injection Test</div></div>
+        <div class="code-block"><span class="cc"># Try malicious inputs in the scanner:</span>
+Target 1: &lt;script&gt;alert('XSS')&lt;/script&gt;
+Target 2: '; DROP TABLE scans; --
+Target 3: ../../../etc/passwd
+Target 4: ${7*7}
+Target 5: javascript:alert(1)</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2)">Goal: Check if inputs are sanitized properly</div>
+      </div>
+
+      <div class="setup-step" style="border-color:rgba(255,68,68,.3)">
+        <div class="step-hdr"><div style="font-size:20px">🕵️</div><div class="step-title" style="color:var(--red)">3. API Key Exposure Test</div></div>
+        <div class="code-block"><span class="cc"># Check if API keys leak to frontend:</span>
+<span class="cc"># 1. Open Chrome DevTools (F12)</span>
+<span class="cc"># 2. Go to Network tab</span>
+<span class="cc"># 3. Run a scan</span>
+<span class="cc"># 4. Check request/response headers</span>
+<span class="cc"># 5. Search page source for API key</span>
+
+<span class="cc"># Your keys should NEVER appear here ✓</span></div>
+      </div>
+
+      <div class="setup-step" style="border-color:rgba(255,68,68,.3)">
+        <div class="step-hdr"><div style="font-size:20px">🌊</div><div class="step-title" style="color:var(--red)">4. CORS Bypass Test</div></div>
+        <div class="code-block"><span class="cc"># Test from browser console (F12 → Console):</span>
+fetch('http://localhost:8080/scan', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Origin': 'http://evil-site.com'
+  },
+  body: JSON.stringify({
+    target: 'test.com',
+    scan_type: 'url'
+  })
+}).then(r => r.json()).then(console.log)</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2)">Goal: Verify CORS policy works correctly</div>
+      </div>
+    </div>
+
+    <!-- DEFEND SIDE -->
+    <div>
+      <div style="font-family:'Orbitron',monospace;font-size:13px;color:var(--green);margin-bottom:14px;letter-spacing:2px">🟢 DEFENSE UPGRADES</div>
+
+      <div class="setup-step" style="border-color:rgba(0,255,136,.3)">
+        <div class="step-hdr"><div style="font-size:20px">🛡️</div><div class="step-title" style="color:var(--green)">1. Add Rate Limiting</div></div>
+        <div class="code-block"><span class="cc"># Add to requirements.txt:</span>
+slowapi==0.1.9
+
+<span class="cc"># Add to main.py:</span>
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+@app.post("/scan")
+@limiter.limit("10/minute")  <span class="cc"># Max 10 scans/min per IP</span>
+async def scan(request: Request, req: ScanRequest):
+    ...</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--green)">✅ Blocks flood attacks</div>
+      </div>
+
+      <div class="setup-step" style="border-color:rgba(0,255,136,.3)">
+        <div class="step-hdr"><div style="font-size:20px">🔒</div><div class="step-title" style="color:var(--green)">2. Input Sanitization</div></div>
+        <div class="code-block"><span class="cc"># Add to main.py scan() function:</span>
+import re
+
+def sanitize_input(target: str) -> str:
+    <span class="cc"># Remove dangerous characters</span>
+    target = target.strip()
+    if len(target) > 500:
+        raise HTTPException(400, "Input too long")
+    <span class="cc"># Block obvious injection attempts</span>
+    bad = ['<script','DROP TABLE','../','javascript:']
+    for b in bad:
+        if b.lower() in target.lower():
+            raise HTTPException(400, "Invalid input")
+    return target</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--green)">✅ Blocks XSS and injection</div>
+      </div>
+
+      <div class="setup-step" style="border-color:rgba(0,255,136,.3)">
+        <div class="step-hdr"><div style="font-size:20px">🔐</div><div class="step-title" style="color:var(--green)">3. Lock Down CORS</div></div>
+        <div class="code-block"><span class="cc"># Change in main.py (for production):</span>
+app.add_middleware(
+    CORSMiddleware,
+    <span class="cc"># Replace * with your actual domain:</span>
+    allow_origins=[
+        "https://cybershield.railway.app",
+        "http://localhost:3000"
+    ],
+    allow_methods=["POST","GET"],
+    allow_headers=["Content-Type"],
+)</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--green)">✅ Only your site can call your API</div>
+      </div>
+
+      <div class="setup-step" style="border-color:rgba(0,255,136,.3)">
+        <div class="step-hdr"><div style="font-size:20px">🔑</div><div class="step-title" style="color:var(--green)">4. Add API Authentication</div></div>
+        <div class="code-block"><span class="cc"># Add secret token to main.py:</span>
+from fastapi.security import HTTPBearer
+security = HTTPBearer()
+
+APP_SECRET = os.getenv("APP_SECRET_KEY")
+
+@app.post("/scan")
+async def scan(req: ScanRequest,
+    token: str = Depends(security)):
+    if token.credentials != APP_SECRET:
+        raise HTTPException(401, "Unauthorized")
+    ...</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--green)">✅ Only your app can call your API</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SETUP ══════════════ -->
+<div id="panel-setup" class="panel">
+  <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--blue);margin-bottom:24px">🔧 SETUP GUIDE</div>
+  <div class="setup-step" style="border-color:rgba(0,212,255,.3)">
+    <div class="step-hdr"><div class="step-num">01</div><div class="step-title">Save Files & Create Folder</div></div>
+    <div class="code-block">C:\Users\sidda\cybershield\backend\
+├── main.py
+├── requirements.txt
+├── .env              <span class="cc">← your API keys here</span>
+└── cybershield_v2.html</div>
+  </div>
+  <div class="setup-step">
+    <div class="step-hdr"><div class="step-num">02</div><div class="step-title">Configure .env File</div></div>
+    <div class="code-block">VIRUSTOTAL_API_KEY=your_new_vt_key
+ABUSEIPDB_API_KEY=your_new_abuseipdb_key</div>
+    <div class="step-desc" style="margin-top:12px">Get keys: <span style="color:var(--blue)">virustotal.com/gui/my-apikey</span> and <span style="color:var(--blue)">abuseipdb.com/account/api</span></div>
+  </div>
+  <div class="setup-step">
+    <div class="step-hdr"><div class="step-num">03</div><div class="step-title">Start Everything (2 CMD windows)</div></div>
+    <div class="code-block"><span class="cc"># CMD 1 — Backend (port 8080):</span>
+cd C:\Users\sidda\cybershield\backend
+venv\Scripts\activate
+uvicorn main:app --reload --port 8080 --host 0.0.0.0
+
+<span class="cc"># CMD 2 — Frontend server (port 3000):</span>
+cd C:\Users\sidda\cybershield\backend
+python -m http.server 3000
+
+<span class="cc"># Browser:</span>
+http://localhost:3000/cybershield_v2.html</div>
+  </div>
+</div>
+
+</div><!-- end content -->
+
+<script>
+const BACKEND = "http://localhost:8080";
+let scanType = "url";
+let scanHistory = [];
+let totalScans = 0;
+
+const COLORS = {
+  HIGH:   {main:"#ff4444",bg:"rgba(255,68,68,.1)",border:"rgba(255,68,68,.4)"},
+  MEDIUM: {main:"#ffaa00",bg:"rgba(255,170,0,.1)",border:"rgba(255,170,0,.4)"},
+  LOW:    {main:"#ffdd00",bg:"rgba(255,221,0,.1)",border:"rgba(255,221,0,.4)"},
+  CLEAN:  {main:"#00ff88",bg:"rgba(0,255,136,.1)",border:"rgba(0,255,136,.4)"},
+  NONE:   {main:"#00d4ff",bg:"rgba(0,212,255,.05)",border:"rgba(0,212,255,.2)"},
+};
+
+function switchTab(id,btn){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById("panel-"+id).classList.add("active");
+  btn.classList.add("active");
+}
+
+function setScanType(t){
+  scanType=t;
+  document.getElementById("btn-url").classList.toggle("active",t==="url");
+  document.getElementById("btn-ip").classList.toggle("active",t==="ip");
+  document.getElementById("target-input").placeholder=
+    t==="url"?"Enter URL or domain (e.g. google.com)":"Enter IP address (e.g. 8.8.8.8)";
+}
+
+function quickScan(target,type){
+  setScanType(type);
+  document.getElementById("target-input").value=target;
+  runScan();
+}
+
+async function checkBackend(){
+  const dot=document.getElementById("status-dot");
+  const txt=document.getElementById("status-text");
+  const pill=document.getElementById("status-pill");
+  const banner=document.getElementById("offline-banner");
+  dot.style.background="#ffaa00";
+  dot.style.boxShadow="0 0 8px #ffaa00";
+  txt.style.color="#ffaa00";
+  txt.textContent="CONNECTING...";
+  try{
+    const r=await fetch(`${BACKEND}/health`,{signal:AbortSignal.timeout(5000)});
+    if(r.ok){
+      const d=await r.json();
+      dot.style.background="#00ff88";
+      dot.style.boxShadow="0 0 10px #00ff88";
+      txt.style.color="#00ff88";
+      txt.textContent=d.vt_key_set&&d.abuse_key_set?"ALL SYSTEMS ONLINE":"ONLINE (CHECK KEYS)";
+      pill.style.borderColor="rgba(0,255,136,.4)";
+      pill.style.background="rgba(0,255,136,.08)";
+      banner.style.display="none";
+    }else{throw new Error("HTTP "+r.status)}
+  }catch(e){
+    dot.style.background="#ff4444";
+    dot.style.boxShadow="0 0 10px #ff4444";
+    txt.style.color="#ff4444";
+    txt.textContent="BACKEND OFFLINE";
+    pill.style.borderColor="rgba(255,68,68,.4)";
+    pill.style.background="rgba(255,68,68,.08)";
+    banner.style.display="block";
+  }
+}
+
+function addLog(msg,type="info"){
+  const box=document.getElementById("log-box");
+  box.style.display="block";
+  const c={info:"#4a8aaa",success:"#00ff88",error:"#ff4444",warn:"#ffaa00"};
+  const i={info:"›",success:"✓",error:"✗",warn:"⚠"};
+  const l=document.createElement("div");
+  l.className="log-line";l.style.color=c[type];
+  l.innerHTML=`<span class="log-time">${new Date().toLocaleTimeString()}</span>${i[type]} ${msg}`;
+  box.appendChild(l);box.scrollTop=box.scrollHeight;
+}
+
+function clearLog(){
+  const b=document.getElementById("log-box");
+  b.innerHTML="";b.style.display="none";
+}
+
+function showError(msg){
+  const e=document.getElementById("error-msg");
+  e.textContent="⚠️ "+msg;e.style.display="block";
+}
+function clearError(){document.getElementById("error-msg").style.display="none";}
+
+async function runScan(){
+  const target=document.getElementById("target-input").value.trim();
+  if(!target){showError("Please enter a URL or IP address.");return;}
+  clearError();clearLog();
+  document.getElementById("results").style.display="none";
+  const btn=document.getElementById("scan-btn");
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>SCANNING...';
+  addLog(`Initializing scan for: ${target}`);
+  addLog("Querying VirusTotal (91 engines)...");
+  if(scanType==="ip") addLog("Querying AbuseIPDB reputation database...");
+  addLog("Fetching geolocation & network intelligence...");
+  try{
+    const r=await fetch(`${BACKEND}/scan`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({target,scan_type:scanType}),
+      signal:AbortSignal.timeout(40000),
+    });
+    if(!r.ok){const e=await r.json();throw new Error(e.detail||"Scan failed");}
+    const data=await r.json();
+    const ec=Object.keys(data.engines||{}).length;
+    addLog(`Analysis complete — ${ec} engines responded`,"success");
+    addLog(`Verdict: ${data.threat_level}`,data.threat_level==="CLEAN"?"success":"error");
+    totalScans++;
+    document.getElementById("scan-count").textContent=totalScans;
+    renderResults(data);
+    addToHistory(target,data);
+  }catch(err){
+    addLog("Error: "+err.message,"error");
+    showError(err.message.includes("fetch")||err.message.includes("Failed")
+      ?"Cannot reach backend — is uvicorn running on port 8080?":err.message);
+  }finally{
+    btn.disabled=false;btn.innerHTML="⚡ SCAN NOW";
+  }
+}
+
+function renderResults(data){
+  const C=COLORS[data.threat_level]||COLORS.NONE;
+  const mal=data.summary?.malicious??0;
+
+  // Banner
+  const banner=document.getElementById("threat-banner");
+  banner.style.background=`linear-gradient(135deg,${C.bg},rgba(0,0,0,.2))`;
+  banner.style.border=`1px solid ${C.border}`;
+  document.getElementById("verdict-type").textContent=data.type?.toUpperCase()||"ANALYSIS";
+  document.getElementById("verdict-text").style.color=C.main;
+  document.getElementById("verdict-text").textContent=
+    data.threat_level==="CLEAN" ?"✅ NO THREATS DETECTED":
+    data.threat_level==="LOW"   ?"🔶 LOW RISK DETECTED":
+    data.threat_level==="MEDIUM"?"⚠️ SUSPICIOUS ACTIVITY":
+                                  "🚨 ACTIVE THREAT DETECTED";
+  document.getElementById("verdict-target").textContent=`Target: ${data.target}`;
+  document.getElementById("verdict-time").textContent=
+    `Scanned: ${new Date(data.scanned_at).toLocaleString()}`;
+
+  // Gauge
+  const score=data.risk_score||0;
+  document.getElementById("gauge").style.background=
+    `conic-gradient(${C.main} ${score*3.6}deg,#0d1a2a 0deg)`;
+  document.getElementById("gauge").style.boxShadow=`0 0 25px ${C.main}44`;
+  document.getElementById("gauge-num").style.color=C.main;
+  document.getElementById("gauge-num").textContent=score;
+
+  // Mini stats
+  const s=data.summary||{};
+  const stats=[
+    {label:"MALICIOUS",   val:s.malicious??0,   color:"#ff4444"},
+    {label:"SUSPICIOUS",  val:s.suspicious??0,  color:"#ffaa00"},
+    {label:"CLEAN",       val:s.clean??0,        color:"#00ff88"},
+    {label:"TOTAL ENGINES",val:s.total_engines??Object.keys(data.engines||{}).length,color:"#00d4ff"},
+  ];
+  if(s.abuse_reports!==undefined)
+    stats.push({label:"ABUSE REPORTS",val:s.abuse_reports,color:"#ff4444"});
+  if(s.abuse_score!==undefined)
+    stats.push({label:"ABUSE SCORE",val:`${s.abuse_score}/100`,color:s.abuse_score>50?"#ff4444":s.abuse_score>20?"#ffaa00":"#00ff88"});
+  document.getElementById("mini-stats").style.gridTemplateColumns=`repeat(${Math.min(stats.length,6)},1fr)`;
+  document.getElementById("mini-stats").innerHTML=stats.map(st=>
+    `<div class="mini-stat tooltip">
+      <div class="mini-stat-val" style="color:${st.color}">${st.val}</div>
+      <div class="mini-stat-lbl">${st.label}</div>
+    </div>`
+  ).join("");
+
+  // Intel cards
+  const intels=[];
+  if(data.geo){
+    intels.push({icon:"🌍",label:"LOCATION",value:data.geo.country||"Unknown",sub:data.geo.city||""});
+    intels.push({icon:"🏢",label:"ISP / ORG",value:data.geo.isp||"Unknown",sub:data.geo.org||""});
+    if(data.geo.is_hosting!==undefined)
+      intels.push({icon:data.geo.is_hosting?"⚠️":"✅",label:"HOSTING PROVIDER",
+        value:data.geo.is_hosting?"YES — HIGH RISK":"NO — RESIDENTIAL",sub:data.geo.usage_type||""});
+  }
+  if(data.abuse){
+    intels.push({icon:"🚨",label:"ABUSE CONFIDENCE",
+      value:`${data.abuse.abuse_score}/100`,
+      sub:data.abuse.total_reports+" total reports"});
+    intels.push({icon:data.abuse.is_tor?"🕵️":"✅",label:"TOR EXIT NODE",
+      value:data.abuse.is_tor?"DETECTED":"NOT DETECTED",sub:""});
+    intels.push({icon:"📅",label:"LAST REPORTED",
+      value:data.abuse.last_reported||"Never",sub:data.abuse.usage_type||""});
+  }
+  if(data.domain_info?.registered)
+    intels.push({icon:"📋",label:"DOMAIN REGISTERED",value:data.domain_info.registered,sub:""});
+  document.getElementById("intel-grid").innerHTML=intels.map(it=>
+    `<div class="intel-card">
+      <div class="intel-icon">${it.icon}</div>
+      <div class="intel-label">${it.label}</div>
+      <div class="intel-value">${it.value}</div>
+      ${it.sub?`<div class="intel-sub">${it.sub}</div>`:""}
+    </div>`
+  ).join("");
+
+  // Detail cards
+  let cards="";
+  if(data.geo){
+    const rows=Object.entries(data.geo).map(([k,v])=>{
+      const display=typeof v==="boolean"?(v?"YES ⚠️":"NO"):(v||"Unknown");
+      const col=typeof v==="boolean"?(v?"#ff4444":"#00ff88"):"var(--text)";
+      return `<div class="drow"><span class="drow-key">${k.replace(/_/g," ")}</span>
+        <span class="drow-val" style="color:${col}">${display}</span></div>`;
+    }).join("");
+    cards+=`<div class="detail-card"><div class="detail-card-title">🌍 GEOLOCATION DETAILS</div>${rows}</div>`;
+  }
+  if(data.abuse){
+    const a=data.abuse;
+    const rows=[
+      ["Abuse Score",`${a.abuse_score}/100`],
+      ["Total Reports",a.total_reports],
+      ["Domain",a.domain||"Unknown"],
+      ["ISP",a.isp||"Unknown"],
+      ["Usage Type",a.usage_type||"Unknown"],
+      ["TOR Node",a.is_tor?"YES ⚠️":"NO"],
+      ["Public IP",a.is_public?"YES":"NO"],
+      ["Last Reported",a.last_reported||"Never"],
+    ].map(([k,v])=>`<div class="drow">
+      <span class="drow-key">${k}</span>
+      <span class="drow-val">${v}</span>
+    </div>`).join("");
+    cards+=`<div class="detail-card"><div class="detail-card-title">🚨 ABUSEIPDB INTELLIGENCE</div>${rows}</div>`;
+  }
+  document.getElementById("cards-grid").innerHTML=cards||
+    `<div class="detail-card" style="grid-column:1/-1"><div style="color:var(--text3);font-size:13px">No additional detail data available.</div></div>`;
+  document.getElementById("cards-grid").style.gridTemplateColumns=
+    (data.geo&&data.abuse)?"1fr 1fr":"1fr";
+
+  // ALL engines
+  const engines=data.engines||{};
+  document.getElementById("engines-grid").innerHTML=
+    Object.entries(engines).map(([eng,verd])=>{
+      const v=verd.toUpperCase();
+      const isClean=["CLEAN","HARMLESS","UNDETECTED","LEGITIMATE"].some(x=>v.includes(x));
+      const isSus=v.includes("SUSPICIOUS");
+      const col=isClean?"#00ff88":isSus?"#ffaa00":"#ff4444";
+      const bg=isClean?"rgba(0,255,136,.08)":isSus?"rgba(255,170,0,.08)":"rgba(255,68,68,.08)";
+      return `<div class="engine-row">
+        <span class="engine-name">${eng}</span>
+        <span class="vbadge" style="color:${col};background:${bg};border:1px solid ${col}33">${verd}</span>
+      </div>`;
+    }).join("")||`<div style="color:var(--text3);font-size:13px;padding:20px">No engine data returned.</div>`;
+
+  document.getElementById("results").style.display="block";
+  document.getElementById("results").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function addToHistory(target,data){
+  scanHistory.unshift({target,scanType,threatLevel:data.threat_level,
+    riskScore:data.risk_score,engines:Object.keys(data.engines||{}).length,
+    time:new Date().toLocaleTimeString(),date:new Date().toLocaleDateString()});
+  if(scanHistory.length>50)scanHistory.pop();
+  renderHistory();
+}
+
+function renderHistory(){
+  const lbl=document.getElementById("hist-label");
+  if(lbl) lbl.textContent=`RECENT SCANS (${scanHistory.length})`;
+  if(!scanHistory.length)return;
+  document.getElementById("hist-list").innerHTML=scanHistory.map((h,i)=>{
+    const C=COLORS[h.threatLevel]||COLORS.NONE;
+    return `<div class="hist-row" onclick="replayScan('${h.target}','${h.scanType}')">
+      <div style="display:flex;align-items:center">
+        <span class="hist-icon">${h.scanType==="url"?"🔗":"🌐"}</span>
+        <div>
+          <div class="hist-target">${h.target}</div>
+          <div class="hist-meta">${h.scanType.toUpperCase()} · ${h.time} · ${h.engines} engines · risk: ${h.riskScore}/100</div>
+        </div>
+      </div>
+      <span class="badge" style="background:${C.bg};color:${C.main};border:1px solid ${C.border}">${h.threatLevel}</span>
+    </div>`;
+  }).join("");
+}
+
+function replayScan(target,type){
+  setScanType(type);
+  document.getElementById("target-input").value=target;
+  switchTab("scanner",document.querySelector(".tab"));
+  document.querySelectorAll(".tab")[0].classList.add("active");
+  runScan();
+}
+
+// Init
+checkBackend();
+setInterval(checkBackend,30000);
+</script>
+</body>
+</html>

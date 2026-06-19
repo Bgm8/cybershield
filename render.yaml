@@ -1,7 +1,16 @@
+<<<<<<< HEAD
 services:
   - type: web
     name: cybershield-api
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+=======
+services:
+  - type: web
+    name: cybershield-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+>>>>>>> 1fed080d0329e7f5b828df461628cf6b3587c9b1
     plan: free
