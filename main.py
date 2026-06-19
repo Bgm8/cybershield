@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
@@ -8,40 +8,59 @@ import asyncio
 from dotenv import load_dotenv
 from datetime import datetime
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 # Load API keys from .env file
 load_dotenv()
 VT_API_KEY    = os.getenv("VIRUSTOTAL_API_KEY")
 ABUSE_API_KEY = os.getenv("ABUSEIPDB_API_KEY")
 
+# FRONTEND_URL defines exactly which website is allowed to call this API.
+# It defaults to allowing localhost for development if not set.
+FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500")
+
 # Create the app
 app = FastAPI(
-    title="CyberShield API",
-    description="AI-powered threat intelligence platform",
-    version="1.0.0"
+    title="CyberShield AI Enterprise API",
+    description="Enterprise Threat Intelligence Platform Backend",
+    version="2.0.0"
 )
 
-# CORS — lets your frontend talk to this backend
+# Set up Rate Limiter (50 requests per minute per IP for enterprise tier)
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Enterprise CORS Configuration - Only allowed origins can communicate
+allowed_origins = [
+    FRONTEND_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://bgm8.github.io",
-                   "http://localhost:3000",],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# What the frontend sends us
+# Request Payload Schema
 class ScanRequest(BaseModel):
-    target: str       # the URL or IP to scan
+    target: str       # URL, Domain, or IP
     scan_type: str    # "url" or "ip"
 
 
 # ══════════════════════════════════════════
-#  VIRUSTOTAL — SCAN A URL
+#  VIRUSTOTAL SCAN LOGIC
 # ══════════════════════════════════════════
 async def vt_scan_url(url: str, client: httpx.AsyncClient) -> dict:
     if not VT_API_KEY:
-        return {"error": "VirusTotal API key not set in .env file"}
+        return {"error": "VirusTotal API key not configured"}
 
     headers = {"x-apikey": VT_API_KEY}
     url_id = base64.urlsafe_b64encode(url.encode()).decode().strip("=")
@@ -109,13 +128,9 @@ async def vt_scan_url(url: str, client: httpx.AsyncClient) -> dict:
     except Exception as e:
         return {"error": str(e)}
 
-
-# ══════════════════════════════════════════
-#  VIRUSTOTAL — SCAN AN IP
-# ══════════════════════════════════════════
 async def vt_scan_ip(ip: str, client: httpx.AsyncClient) -> dict:
     if not VT_API_KEY:
-        return {"error": "VirusTotal API key not set in .env file"}
+        return {"error": "VirusTotal API key not configured"}
 
     headers = {"x-apikey": VT_API_KEY}
 
@@ -167,11 +182,11 @@ async def vt_scan_ip(ip: str, client: httpx.AsyncClient) -> dict:
 
 
 # ══════════════════════════════════════════
-#  ABUSEIPDB — IP REPUTATION
+#  ABUSEIPDB
 # ══════════════════════════════════════════
 async def check_abuseipdb(ip: str, client: httpx.AsyncClient) -> dict:
     if not ABUSE_API_KEY:
-        return {"error": "AbuseIPDB API key not set in .env file"}
+        return {"error": "AbuseIPDB API key not configured"}
 
     try:
         response = await client.get(
@@ -205,7 +220,7 @@ async def check_abuseipdb(ip: str, client: httpx.AsyncClient) -> dict:
 
 
 # ══════════════════════════════════════════
-#  IP-API — FREE GEOLOCATION (no key needed)
+#  IP-API (Geolocation)
 # ══════════════════════════════════════════
 async def get_ip_geo(ip: str, client: httpx.AsyncClient) -> dict:
     try:
@@ -220,7 +235,7 @@ async def get_ip_geo(ip: str, client: httpx.AsyncClient) -> dict:
 
 
 # ══════════════════════════════════════════
-#  WHOIS — DOMAIN INFO (free, no key needed)
+#  WHOIS (Domain)
 # ══════════════════════════════════════════
 async def get_domain_info(url: str, client: httpx.AsyncClient) -> dict:
     try:
@@ -232,24 +247,21 @@ async def get_domain_info(url: str, client: httpx.AsyncClient) -> dict:
 
 
 # ══════════════════════════════════════════
-#  ROUTES
+#  API ROUTES (Endpoints MUST NOT Change)
 # ══════════════════════════════════════════
 
 @app.get("/")
 async def root():
-    """Open http://localhost:8080 in browser to confirm server is running"""
     return {
-        "status":  "CyberShield API is ONLINE",
-        "version": "1.0.0",
-        "docs":    "/docs",
+        "status":  "CyberShield Enterprise API is ONLINE",
+        "version": "2.0.0",
         "health":  "/health",
         "time":    datetime.now().isoformat()
     }
 
-
 @app.get("/health")
 async def health():
-    """Open http://localhost:8080/health — checks if API keys are loaded"""
+    """System heartbeat endpoint used by the frontend SOC dashboard"""
     return {
         "status":        "online",
         "vt_key_set":    bool(VT_API_KEY),
@@ -257,10 +269,10 @@ async def health():
         "time":          datetime.now().isoformat()
     }
 
-
 @app.post("/scan")
-async def scan(req: ScanRequest):
-    """Main scan endpoint — called by the frontend"""
+@limiter.limit("50/minute")
+async def scan(request: Request, req: ScanRequest):
+    """Core Threat Intelligence Engine endpoint"""
     target    = req.target.strip()
     scan_type = req.scan_type.strip().lower()
 
@@ -271,14 +283,14 @@ async def scan(req: ScanRequest):
     if scan_type not in ["url", "ip"]:
         raise HTTPException(status_code=400, detail="scan_type must be url or ip")
 
-    # Block obvious injection attempts
+    # WAF - Block basic injection attempts
     for bad in ["<script", "javascript:", "DROP TABLE", "../etc"]:
         if bad.lower() in target.lower():
-            raise HTTPException(status_code=400, detail="Invalid input")
+            raise HTTPException(status_code=400, detail="Malicious input detected by WAF")
 
     async with httpx.AsyncClient() as client:
 
-        # ── URL SCAN ──────────────────────────────────────────
+        # ── URL/DOMAIN INTELLIGENCE ──────────────────────────────────────────
         if scan_type == "url":
             vt_data, domain_data = await asyncio.gather(
                 vt_scan_url(target, client),
@@ -312,7 +324,7 @@ async def scan(req: ScanRequest):
                 "scanned_at":  datetime.now().isoformat(),
             }
 
-        # ── IP SCAN ───────────────────────────────────────────
+        # ── IP INTELLIGENCE ───────────────────────────────────────────
         elif scan_type == "ip":
             vt_data, abuse_data, geo_data = await asyncio.gather(
                 vt_scan_ip(target, client),
