@@ -1,17 +1,3 @@
-"""
-CyberShield Backend — FastAPI Server
-
-HOW TO RUN:
-  cd C:\Users\sidda\cybershield_project
-  venv\Scripts\activate
-  uvicorn main:app --reload --port 8080 --host 0.0.0.0
-
-THEN OPEN:
-  http://localhost:8080        → confirms server is running
-  http://localhost:8080/health → confirms API keys are loaded
-  http://localhost:8080/docs   → auto-generated API docs
-"""
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel

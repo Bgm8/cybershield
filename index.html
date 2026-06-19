@@ -394,7 +394,7 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:2px;
 <div id="offline-banner">
   <h3>⚠️ BACKEND OFFLINE</h3>
   <div class="code-block"><span class="cc"># CMD Window 1 — Start backend:</span>
-cd C:\Users\sidda\cybershield\backend
+cd C:\Users\sidda\cybershield\
 venv\Scripts\activate
 uvicorn main:app --reload --port 8080 --host 0.0.0.0
 
@@ -766,7 +766,7 @@ async def scan(req: ScanRequest,
   <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--blue);margin-bottom:24px">🔧 SETUP GUIDE</div>
   <div class="setup-step" style="border-color:rgba(0,212,255,.3)">
     <div class="step-hdr"><div class="step-num">01</div><div class="step-title">Save Files & Create Folder</div></div>
-    <div class="code-block">C:\Users\sidda\cybershield\backend\
+    <div class="code-block">C:\Users\sidda\cybershield\
 ├── main.py
 ├── requirements.txt
 ├── .env              <span class="cc">← your API keys here</span>
@@ -781,12 +781,12 @@ ABUSEIPDB_API_KEY=your_new_abuseipdb_key</div>
   <div class="setup-step">
     <div class="step-hdr"><div class="step-num">03</div><div class="step-title">Start Everything (2 CMD windows)</div></div>
     <div class="code-block"><span class="cc"># CMD 1 — Backend (port 8080):</span>
-cd C:\Users\sidda\cybershield\backend
+cd C:\Users\sidda\cybershield\
 venv\Scripts\activate
 uvicorn main:app --reload --port 8080 --host 0.0.0.0
 
 <span class="cc"># CMD 2 — Frontend server (port 3000):</span>
-cd C:\Users\sidda\cybershield\backend
+cd C:\Users\sidda\cybershield\
 python -m http.server 3000
 
 <span class="cc"># Browser:</span>
@@ -797,7 +797,7 @@ http://localhost:3000/cybershield_v2.html</div>
 </div><!-- end content -->
 
 <script>
-const BACKEND = "https://cybershield-production-2548.up.railway.app/";
+const BACKEND = "https://cybershield-production-2548.up.railway.app";
 let scanType = "url";
 let scanHistory = [];
 let totalScans = 0;
