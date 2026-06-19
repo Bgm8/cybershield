@@ -668,7 +668,7 @@ Target 5: javascript:alert(1)</div>
       <div class="setup-step" style="border-color:rgba(255,68,68,.3)">
         <div class="step-hdr"><div style="font-size:20px">🌊</div><div class="step-title" style="color:var(--red)">4. CORS Bypass Test</div></div>
         <div class="code-block"><span class="cc"># Test from browser console (F12 → Console):</span>
-fetch('http://localhost:8080/scan', {
+fetch(`${BACKEND}/scan', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
