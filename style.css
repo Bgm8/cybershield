@@ -303,8 +303,8 @@ body {
 .ai-body { font-size: 0.88rem; line-height: 1.7; color: var(--text-main); min-height: 60px; }
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
-/* Details Layout */
-.details-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; }
+/* Details Stack */
+.details-stack { display: flex; flex-direction: column; gap: 24px; }
 .kv-grid { display: grid; gap: 4px; }
 .kv-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 0.88rem; gap: 12px; }
 .kv-row:last-child { border-bottom: none; }
