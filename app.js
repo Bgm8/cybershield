@@ -48,6 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkApiHealth();
     setInterval(checkApiHealth, 60000);
     renderHistory();
+    initHero3DCanvas();
+    init3DTilt();
 
     // Scan type tabs
     document.querySelectorAll('.scan-tab').forEach(tab => {
@@ -172,8 +174,12 @@ async function checkApiHealth() {
         }
 
         // Update settings page statuses
-        setEl('set-vt-status',    data.vt_key_set    ? 'CONNECTED' : 'KEY MISSING', data.vt_key_set    ? 'text-success' : 'text-danger');
-        setEl('set-abuse-status', data.abuse_key_set ? 'CONNECTED' : 'KEY MISSING', data.abuse_key_set ? 'text-success' : 'text-danger');
+        setEl('set-vt-status',       data.vt_key_set        ? 'CONNECTED' : 'KEY MISSING', data.vt_key_set        ? 'text-success' : 'text-danger');
+        setEl('set-abuse-status',    data.abuse_key_set     ? 'CONNECTED' : 'KEY MISSING', data.abuse_key_set     ? 'text-success' : 'text-danger');
+        setEl('set-ipinfo-status',   data.ipinfo_key_set    ? 'CONNECTED' : 'KEY MISSING', data.ipinfo_key_set    ? 'text-success' : 'text-danger');
+        setEl('set-otx-status',      data.otx_key_set       ? 'CONNECTED' : 'KEY MISSING', data.otx_key_set       ? 'text-success' : 'text-danger');
+        setEl('set-urlscan-status',  data.urlscan_key_set   ? 'CONNECTED' : 'KEY MISSING', data.urlscan_key_set   ? 'text-success' : 'text-danger');
+        setEl('set-gsb-status',      data.google_sb_key_set ? 'CONNECTED' : 'KEY MISSING', data.google_sb_key_set ? 'text-success' : 'text-danger');
 
     } catch {
         sysDot.className      = 'dot offline';
@@ -182,6 +188,10 @@ async function checkApiHealth() {
             apiVal.textContent    = 'OFFLINE';
             apiVal.className      = 'dc-value font-display text-danger';
         }
+        // Mark all as offline
+        ['vt', 'abuse', 'ipinfo', 'otx', 'urlscan', 'gsb'].forEach(key => {
+            setEl(`set-${key}-status`, 'OFFLINE', 'text-danger');
+        });
     }
 }
 
@@ -458,7 +468,7 @@ function addKvRows(container, rows) {
 function renderShodanPanel(shodan) {
     const panel = document.getElementById('shodan-panel');
     if (!panel) return;
-    if (!shodan || (!shodan.open_ports?.length && !shodan.vulns?.length)) {
+    if (currentScanType !== 'ip') {
         panel.style.display = 'none'; return;
     }
     panel.style.display = 'block';
@@ -468,7 +478,28 @@ function renderShodanPanel(shodan) {
     const hostsEl = document.getElementById('shodan-hosts');
     const tagsEl  = document.getElementById('shodan-tags');
 
+    let statusBadge = panel.querySelector('.panel-status-badge');
+    if (!statusBadge) {
+        statusBadge = document.createElement('span');
+        statusBadge.className = 'panel-status-badge font-mono text-xs';
+        statusBadge.style.float = 'right';
+        panel.querySelector('h3').appendChild(statusBadge);
+    }
+    statusBadge.textContent = '🟢 ONLINE (NO KEY)';
+    statusBadge.style.color = 'var(--success)';
+
     portsEl.innerHTML = '';
+    vulnsEl.innerHTML = '';
+    tagsEl.innerHTML = '';
+
+    if (!shodan || (!shodan.open_ports?.length && !shodan.vulns?.length)) {
+        hostsEl.textContent = '—';
+        portsEl.innerHTML = '<span class="tag-chip tag-port">NONE DETECTED</span>';
+        vulnsEl.innerHTML = '<span class="tag-chip tag-port">NONE DETECTED</span>';
+        tagsEl.innerHTML = '<span class="tag-chip tag-info">NO TAGS</span>';
+        return;
+    }
+
     (shodan.open_ports || []).forEach(port => {
         const span = document.createElement('span');
         span.className = 'tag-chip tag-port';
@@ -476,7 +507,6 @@ function renderShodanPanel(shodan) {
         portsEl.appendChild(span);
     });
 
-    vulnsEl.innerHTML = '';
     (shodan.vulns || []).forEach(cve => {
         const span = document.createElement('span');
         span.className = 'tag-chip tag-vuln';
@@ -486,7 +516,6 @@ function renderShodanPanel(shodan) {
 
     hostsEl.textContent = (shodan.hostnames || []).join(', ') || '—';
 
-    tagsEl.innerHTML = '';
     (shodan.tags || []).forEach(tag => {
         const span = document.createElement('span');
         span.className = 'tag-chip tag-info';
@@ -499,18 +528,33 @@ function renderShodanPanel(shodan) {
 function renderOtxPanel(otx) {
     const panel = document.getElementById('otx-panel');
     if (!panel) return;
-    if (!otx || otx.count === undefined) {
-        panel.style.display = 'none'; return;
-    }
     panel.style.display = 'block';
 
     const countEl = document.getElementById('otx-pulse-count');
+    const pulsesEl = document.getElementById('otx-pulses');
+
+    let statusBadge = panel.querySelector('.panel-status-badge');
+    if (!statusBadge) {
+        statusBadge = document.createElement('span');
+        statusBadge.className = 'panel-status-badge font-mono text-xs';
+        statusBadge.style.float = 'right';
+        panel.querySelector('h3').appendChild(statusBadge);
+    }
+
+    if (!otx || otx.count === undefined) {
+        statusBadge.textContent = '⚪ INACTIVE';
+        statusBadge.style.color = 'var(--text-faint)';
+        countEl.textContent = '—';
+        pulsesEl.innerHTML = '<div class="text-muted mt-2">AlienVault OTX API key not configured on backend. Add OTX_API_KEY to Railway.</div>';
+        return;
+    }
+
+    statusBadge.textContent = '🟢 ACTIVE';
+    statusBadge.style.color = 'var(--success)';
     countEl.textContent = String(otx.count);
     countEl.style.color = otx.count > 0 ? 'var(--danger)' : 'var(--success)';
 
-    const pulsesEl = document.getElementById('otx-pulses');
     pulsesEl.innerHTML = '';
-    
     if (otx.count === 0) {
         pulsesEl.innerHTML = '<div class="text-muted mt-2">No known threat campaigns associated with this indicator.</div>';
     } else {
@@ -557,12 +601,38 @@ function renderOtxPanel(otx) {
 function renderUrlscanPanel(us) {
     const panel = document.getElementById('urlscan-panel');
     if (!panel) return;
-    if (!us || !us.scan_id) {
+    if (currentScanType !== 'url') {
         panel.style.display = 'none'; return;
     }
     panel.style.display = 'block';
 
     const screenshotEl = document.getElementById('urlscan-screenshot');
+    const techEl = document.getElementById('urlscan-tech');
+    const usGrid = document.getElementById('urlscan-grid');
+
+    let statusBadge = panel.querySelector('.panel-status-badge');
+    if (!statusBadge) {
+        statusBadge = document.createElement('span');
+        statusBadge.className = 'panel-status-badge font-mono text-xs';
+        statusBadge.style.float = 'right';
+        panel.querySelector('h3').appendChild(statusBadge);
+    }
+
+    if (!us || !us.scan_id) {
+        statusBadge.textContent = '⚪ INACTIVE';
+        statusBadge.style.color = 'var(--text-faint)';
+        screenshotEl.innerHTML = '';
+        techEl.innerHTML = '';
+        usGrid.innerHTML = '';
+        addKvRows(usGrid, [
+            ['Status', 'URLScan.io API key not configured. Add URLSCAN_API_KEY to Railway.']
+        ]);
+        return;
+    }
+
+    statusBadge.textContent = '🟢 ACTIVE';
+    statusBadge.style.color = 'var(--success)';
+
     if (us.screenshot) {
         const img = document.createElement('img');
         img.src = us.screenshot;
@@ -573,7 +643,6 @@ function renderUrlscanPanel(us) {
         screenshotEl.appendChild(img);
     }
 
-    const techEl = document.getElementById('urlscan-tech');
     techEl.innerHTML = '';
     (us.technologies || []).forEach(t => {
         const span = document.createElement('span');
@@ -582,7 +651,6 @@ function renderUrlscanPanel(us) {
         techEl.appendChild(span);
     });
 
-    const usGrid = document.getElementById('urlscan-grid');
     usGrid.innerHTML = '';
     addKvRows(usGrid, [
         ['Server IP',      us.ip         || '—'],
@@ -600,23 +668,49 @@ function renderUrlscanPanel(us) {
 function renderGsbPanel(gsb) {
     const panel = document.getElementById('gsb-panel');
     if (!panel) return;
-    if (!gsb || Object.keys(gsb).length === 0) {
+    if (currentScanType !== 'url') {
         panel.style.display = 'none'; return;
     }
     panel.style.display = 'block';
-    const safe = gsb.safe !== false;
+
     const statusEl = document.getElementById('gsb-status');
+    const threatsEl = document.getElementById('gsb-threats');
+
+    let statusBadge = panel.querySelector('.panel-status-badge');
+    if (!statusBadge) {
+        statusBadge = document.createElement('span');
+        statusBadge.className = 'panel-status-badge font-mono text-xs';
+        statusBadge.style.float = 'right';
+        panel.querySelector('h3').appendChild(statusBadge);
+    }
+
+    if (!gsb || Object.keys(gsb).length === 0) {
+        statusBadge.textContent = '⚪ INACTIVE';
+        statusBadge.style.color = 'var(--text-faint)';
+        statusEl.textContent = 'INACTIVE';
+        statusEl.style.color = 'var(--text-faint)';
+        threatsEl.innerHTML = '<span class="tag-chip tag-info">API KEY NOT CONFIGURED</span>';
+        return;
+    }
+
+    statusBadge.textContent = '🟢 ACTIVE';
+    statusBadge.style.color = 'var(--success)';
+
+    const safe = gsb.safe !== false;
     statusEl.textContent = safe ? '✅ SAFE' : '🚨 UNSAFE — Google Flagged';
     statusEl.style.color = safe ? 'var(--success)' : 'var(--danger)';
 
-    const threatsEl = document.getElementById('gsb-threats');
     threatsEl.innerHTML = '';
-    (gsb.threats || []).forEach(t => {
-        const span = document.createElement('span');
-        span.className = 'tag-chip tag-vuln';
-        span.textContent = t.replace(/_/g, ' ');
-        threatsEl.appendChild(span);
-    });
+    if (gsb.threats && gsb.threats.length > 0) {
+        (gsb.threats || []).forEach(t => {
+            const span = document.createElement('span');
+            span.className = 'tag-chip tag-vuln';
+            span.textContent = t.replace(/_/g, ' ');
+            threatsEl.appendChild(span);
+        });
+    } else {
+        threatsEl.innerHTML = '<span class="tag-chip tag-port">NO THREATS DETECTED</span>';
+    }
 }
 
 // ── ENGINE FILTER ──────────────────────────────────────────────────────────
@@ -856,5 +950,166 @@ function initSettingsToggles() {
             const isActive = t.classList.toggle('active');
             t.setAttribute('aria-checked', String(isActive));
         });
+    });
+}
+
+// ── 3D INTERACTIVE CANVAS GLOBE / NETWORK ──────────────────────────────────
+function initHero3DCanvas() {
+    const canvas = document.getElementById('hero-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    let width = canvas.width = canvas.offsetWidth;
+    let height = canvas.height = canvas.offsetHeight;
+    
+    window.addEventListener('resize', () => {
+        width = canvas.width = canvas.offsetWidth;
+        height = canvas.height = canvas.offsetHeight;
+    });
+
+    const particles = [];
+    const numParticles = 45;
+    const maxDistance = 90;
+    let angleX = 0.001;
+    let angleY = 0.001;
+    
+    for (let i = 0; i < numParticles; i++) {
+        particles.push({
+            x: (Math.random() - 0.5) * 300,
+            y: (Math.random() - 0.5) * 300,
+            z: (Math.random() - 0.5) * 300,
+            radius: Math.random() * 2 + 1
+        });
+    }
+
+    let targetAngleX = 0.001;
+    let targetAngleY = 0.001;
+    const hero = document.querySelector('.hero-section');
+    if (hero) {
+        hero.addEventListener('mousemove', (e) => {
+            const rect = hero.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - rect.width / 2;
+            const mouseY = e.clientY - rect.top - rect.height / 2;
+            targetAngleY = mouseX * 0.00001;
+            targetAngleX = mouseY * 0.00001;
+        });
+        hero.addEventListener('mouseleave', () => {
+            targetAngleX = 0.001;
+            targetAngleY = 0.001;
+        });
+    }
+
+    function rotateX(p, angle) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const y1 = p.y * cos - p.z * sin;
+        const z1 = p.z * cos + p.y * sin;
+        p.y = y1;
+        p.z = z1;
+    }
+
+    function rotateY(p, angle) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const x1 = p.x * cos - p.z * sin;
+        const z1 = p.z * cos + p.x * sin;
+        p.x = x1;
+        p.z = z1;
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+        
+        angleX += (targetAngleX - angleX) * 0.1;
+        angleY += (targetAngleY - angleY) * 0.1;
+
+        const projected = [];
+        const fov = 350;
+        
+        particles.forEach(p => {
+            rotateX(p, angleX);
+            rotateY(p, angleY);
+
+            const scale = fov / (fov + p.z);
+            const x2d = p.x * scale + width / 2;
+            const y2d = p.y * scale + height / 2;
+            
+            projected.push({ x: x2d, y: y2d, scale: scale, z: p.z });
+        });
+
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < numParticles; i++) {
+            for (let j = i + 1; j < numParticles; j++) {
+                const dx = projected[i].x - projected[j].x;
+                const dy = projected[i].y - projected[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < maxDistance) {
+                    const alpha = (1 - dist / maxDistance) * 0.25 * projected[i].scale;
+                    ctx.strokeStyle = `rgba(0, 212, 255, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.moveTo(projected[i].x, projected[i].y);
+                    ctx.lineTo(projected[j].x, projected[j].y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        projected.forEach((p, idx) => {
+            const alpha = Math.max(0.1, (fov - p.z) / (fov * 2)) * p.scale;
+            ctx.fillStyle = `rgba(0, 212, 255, ${alpha * 0.85})`;
+            ctx.shadowBlur = 4 * p.scale;
+            ctx.shadowColor = 'var(--primary)';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, particles[idx].radius * p.scale, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        ctx.shadowBlur = 0;
+        requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+// ── 3D DYNAMIC CARD TILT EFFECT ────────────────────────────────────────────
+function init3DTilt() {
+    const selector = '.dash-card, .verdict-card, .ai-analyst-card, .views-container > .glass-panel, .left-col > .glass-panel, .right-col > .glass-panel';
+    
+    document.addEventListener('mousemove', (e) => {
+        const cards = document.querySelectorAll(selector);
+        cards.forEach(card => {
+            const rect = card.getBoundingClientRect();
+            const cardX = rect.left + rect.width / 2;
+            const cardY = rect.top + rect.height / 2;
+            
+            const dist = Math.hypot(e.clientX - cardX, e.clientY - cardY);
+            if (dist > 300) {
+                card.style.transform = '';
+                card.style.boxShadow = '';
+                return;
+            }
+
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const px = (x / rect.width) * 100;
+            const py = (y / rect.height) * 100;
+            
+            const rotateY = -((px - 50) / 5) * 1.2;
+            const rotateX = ((py - 50) / 5) * 1.2;
+            
+            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+            card.style.transition = 'transform 0.15s ease-out, box-shadow 0.15s ease-out';
+            card.style.boxShadow = `0 15px 30px rgba(0, 212, 255, 0.08), 0 5px 15px rgba(0, 0, 0, 0.4)`;
+        });
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const target = e.target.closest(selector);
+        if (target) {
+            target.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+            target.style.transition = 'transform 0.5s ease, box-shadow 0.5s ease';
+            target.style.boxShadow = '';
+        }
     });
 }

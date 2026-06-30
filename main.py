@@ -459,10 +459,14 @@ async def root():
 async def health():
     """System heartbeat endpoint used by the frontend SOC dashboard"""
     return {
-        "status":        "online",
-        "vt_key_set":    bool(VT_API_KEY),
-        "abuse_key_set": bool(ABUSE_API_KEY),
-        "time":          datetime.now().isoformat()
+        "status":            "online",
+        "vt_key_set":        bool(VT_API_KEY),
+        "abuse_key_set":     bool(ABUSE_API_KEY),
+        "ipinfo_key_set":    bool(IPINFO_API_KEY),
+        "otx_key_set":       bool(OTX_API_KEY),
+        "urlscan_key_set":   bool(URLSCAN_API_KEY),
+        "google_sb_key_set": bool(GOOGLE_SB_KEY),
+        "time":              datetime.now().isoformat()
     }
 
 @app.post("/scan")

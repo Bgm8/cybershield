@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 // locally on port 8000. When you deploy to a server later,
 // change this to your server's URL (e.g. https://api.cybershield.app)
 // ─────────────────────────────────────────────────────────────
-const BACKEND_URL = "https://your-render-app.onrender.com";
+const BACKEND_URL = "cybershield-production-2548.up.railway.app";
 
 // ─────────────────────────────────────────────────────────────
 // Helper: color based on threat level
