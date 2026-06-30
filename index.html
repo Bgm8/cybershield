@@ -189,27 +189,7 @@
                     <div id="scan-results" class="scan-results" style="display: none;" role="region" aria-label="Scan Results">
                         
                         <!-- 🛡️ 1. Full Width Security Engines Section (At the very top!) -->
-                        <div class="glass-panel p-6 mb-6" id="engines-panel">
-                            <div class="d-flex justify-between align-center mb-6 flex-wrap gap-4">
-                                <div class="d-flex align-center gap-4 flex-wrap">
-                                    <h3 class="font-display text-accent" style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
-                                        🛡️ Security Vendor Audit (<span id="engine-cnt">0</span>)
-                                    </h3>
-                                    <div class="search-bar" role="search" style="margin-left: 16px;">
-                                        <span class="search-icon" aria-hidden="true" style="left: 12px; font-size: 0.8rem;">🔍</span>
-                                        <input type="text" id="engine-search" class="font-mono" placeholder="Search security vendor (e.g. Symantec)..." autocomplete="off" spellcheck="false" style="padding: 6px 12px 6px 36px; font-size: 0.75rem; width: 260px;">
-                                    </div>
-                                </div>
-                                <div class="filter-btns" role="group" aria-label="Filter engines">
-                                    <button class="filter-btn font-mono active" id="filter-all" onclick="filterEngines('all')">ALL VENDORS</button>
-                                    <button class="filter-btn font-mono" id="filter-malicious" onclick="filterEngines('malicious')">🔴 THREATS ONLY</button>
-                                    <button class="filter-btn font-mono" id="filter-clean" onclick="filterEngines('clean')">🟢 CLEAN VENDORS</button>
-                                </div>
-                            </div>
-                            <div class="engines-list" id="engines-list"></div>
-                        </div>
-
-                        <!-- 📊 2. Top Verdict + AI Analyst -->
+                        <!-- 📊 1. Top Verdict + AI Analyst (At the very top!) -->
                         <div class="results-top mb-6">
                             <div class="verdict-card glass-panel" id="verdict-card">
                                 <div class="vc-left">
@@ -242,6 +222,27 @@
                                     <!-- Typewriter text inserted here -->
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- 🛡️ 2. Full Width Security Engines Section (Under Verdict) -->
+                        <div class="glass-panel p-6 mb-6" id="engines-panel">
+                            <div class="d-flex justify-between align-center mb-6 flex-wrap gap-4">
+                                <div class="d-flex align-center gap-4 flex-wrap">
+                                    <h3 class="font-display text-accent" style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                                        🛡️ Security Vendor Audit (<span id="engine-cnt">0</span>)
+                                    </h3>
+                                    <div class="search-bar" role="search" style="margin-left: 16px;">
+                                        <span class="search-icon" aria-hidden="true" style="left: 12px; font-size: 0.8rem;">🔍</span>
+                                        <input type="text" id="engine-search" class="font-mono" placeholder="Search security vendor (e.g. Symantec)..." autocomplete="off" spellcheck="false" style="padding: 6px 12px 6px 36px; font-size: 0.75rem; width: 260px;">
+                                    </div>
+                                </div>
+                                <div class="filter-btns" role="group" aria-label="Filter engines">
+                                    <button class="filter-btn font-mono active" id="filter-all" onclick="filterEngines('all')">ALL VENDORS</button>
+                                    <button class="filter-btn font-mono" id="filter-malicious" onclick="filterEngines('malicious')">🔴 THREATS ONLY</button>
+                                    <button class="filter-btn font-mono" id="filter-clean" onclick="filterEngines('clean')">🟢 CLEAN VENDORS</button>
+                                </div>
+                            </div>
+                            <div class="engines-list" id="engines-list"></div>
                         </div>
 
                         <!-- 🔬 3. Threat Intelligence Details Stack (Dedicated full-width sections) -->
