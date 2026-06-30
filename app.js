@@ -30,6 +30,7 @@ let totalScans = 0;
 let highCount = 0, mediumCount = 0, cleanCount = 0;
 let isScanning = false;
 let allEngineData = {}; // Store full engine data for filtering
+let currentEngineFilter = "all"; // Store active vendor filter
 
 const THEMES = {
     HIGH:   { main: "#FF4444", bg: "rgba(255,68,68,0.12)", label: "CRITICAL THREAT" },
@@ -49,7 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(checkApiHealth, 60000);
     renderHistory();
     initHero3DCanvas();
-    init3DTilt();
+
+    // Live engine search filter
+    const engineSearch = document.getElementById('engine-search');
+    if (engineSearch) {
+        engineSearch.addEventListener('input', () => {
+            renderEngines(currentEngineFilter);
+        });
+    }
 
     // Scan type tabs
     document.querySelectorAll('.scan-tab').forEach(tab => {
@@ -718,6 +726,8 @@ function renderEngines(filter = 'all') {
     const eList = document.getElementById('engines-list');
     eList.innerHTML = '';
 
+    const searchQuery = document.getElementById('engine-search')?.value.toLowerCase().trim() || "";
+
     // Sort: malicious first, then suspicious, then clean
     const sorted = Object.entries(allEngineData).sort((a, b) => {
         const ra = a[1].toUpperCase(), rb = b[1].toUpperCase();
@@ -741,15 +751,23 @@ function renderEngines(filter = 'all') {
         if (filter === 'malicious' && (isClean || isSusp)) continue;
         if (filter === 'clean'     && !isClean)             continue;
 
+        if (searchQuery && !name.toLowerCase().includes(searchQuery)) continue;
+
         let col = THEMES.CLEAN;
         if (!isClean) col = isSusp ? THEMES.MEDIUM : THEMES.HIGH;
 
         const item = document.createElement('div');
         item.className = 'engine-item';
+        
+        if (!isClean) {
+            item.classList.add(isSusp ? 'status-suspicious' : 'status-malicious');
+        } else {
+            item.classList.add('status-clean');
+        }
 
         const nameEl = document.createElement('span');
         nameEl.className = 'e-name';
-        nameEl.title    = name; // tooltip for long names
+        nameEl.title    = name;
         nameEl.textContent = name;
 
         const resEl = document.createElement('span');
@@ -766,15 +784,18 @@ function renderEngines(filter = 'all') {
 
     if (shown === 0) {
         const empty = document.createElement('div');
-        empty.className   = 'text-muted font-mono text-sm';
-        empty.textContent = filter === 'malicious' ? '✅ No malicious detections found.' : 'No results match this filter.';
+        empty.className   = 'text-muted font-mono text-sm p-4 w-100 text-center';
+        empty.textContent = searchQuery ? '🔍 No security vendors matching your search.' : (filter === 'malicious' ? '✅ No malicious detections found.' : 'No results match this filter.');
         eList.appendChild(empty);
     }
 }
 
 function filterEngines(filter) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(`filter-${filter}`).classList.add('active');
+    currentEngineFilter = filter;
+    document.querySelectorAll(`.filter-btn`).forEach(b => {
+        if (b.id === `filter-${filter}`) b.classList.add('active');
+        else b.classList.remove('active');
+    });
     renderEngines(filter);
 }
 
@@ -1071,45 +1092,4 @@ function initHero3DCanvas() {
     animate();
 }
 
-// ── 3D DYNAMIC CARD TILT EFFECT ────────────────────────────────────────────
-function init3DTilt() {
-    const selector = '.dash-card, .verdict-card, .ai-analyst-card, .views-container > .glass-panel, .left-col > .glass-panel, .right-col > .glass-panel';
-    
-    document.addEventListener('mousemove', (e) => {
-        const cards = document.querySelectorAll(selector);
-        cards.forEach(card => {
-            const rect = card.getBoundingClientRect();
-            const cardX = rect.left + rect.width / 2;
-            const cardY = rect.top + rect.height / 2;
-            
-            const dist = Math.hypot(e.clientX - cardX, e.clientY - cardY);
-            if (dist > 300) {
-                card.style.transform = '';
-                card.style.boxShadow = '';
-                return;
-            }
-
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            const px = (x / rect.width) * 100;
-            const py = (y / rect.height) * 100;
-            
-            const rotateY = -((px - 50) / 5) * 1.2;
-            const rotateX = ((py - 50) / 5) * 1.2;
-            
-            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
-            card.style.transition = 'transform 0.15s ease-out, box-shadow 0.15s ease-out';
-            card.style.boxShadow = `0 15px 30px rgba(0, 212, 255, 0.08), 0 5px 15px rgba(0, 0, 0, 0.4)`;
-        });
-    });
-
-    document.addEventListener('mouseout', (e) => {
-        const target = e.target.closest(selector);
-        if (target) {
-            target.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-            target.style.transition = 'transform 0.5s ease, box-shadow 0.5s ease';
-            target.style.boxShadow = '';
-        }
-    });
-}
+// 3D card tilt effect removed to ensure stable, human-friendly layouts
