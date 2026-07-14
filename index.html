@@ -2208,6 +2208,14 @@
 
         // ── NAVIGATION CONTROLLER ────────────────────────────────────────────
         function navigate(viewId) {
+            if (viewId === 'admin') {
+                const token = adminToken || sessionStorage.getItem("cs_admin_jwt");
+                if (!token) {
+                    openAdminVerifyModal();
+                    return;
+                }
+            }
+
             activeView = viewId;
             document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -2688,6 +2696,11 @@
                     intelContent.innerHTML = html;
                 }
             } catch (e) {
+                if (e.message.includes("403") || e.message.includes("401") || e.message.includes("Access denied") || e.message.includes("Forbidden")) {
+                    adminToken = null;
+                    sessionStorage.removeItem("cs_admin_jwt");
+                    updateAuthUi(false);
+                }
                 intelContent.innerHTML = `<div class="text-danger font-mono text-xs">Failed to load advanced premium checks: ${escapeHtml(e.message)}</div>`;
             }
         }
