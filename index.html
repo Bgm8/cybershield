@@ -1214,7 +1214,7 @@
                     91+ security engines. Real-time intelligence. Zero guesswork. Protect yourself before attackers strike.
                 </p>
                 <div style="display: flex; gap: 14px; justify-content: center; margin-bottom: 40px; flex-wrap: wrap;">
-                    <button class="primary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="navigate('scanner')">Start Scanning Free →</button>
+                    <button class="primary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="startScanningFreeTrial()">Start Scanning Free →</button>
                     <button class="secondary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="navigate('about')">View Platform Details</button>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 20px;">
@@ -1539,7 +1539,7 @@
                             <li><span>❌</span> No historic dashboard logs</li>
                             <li><span>❌</span> Personal API key integration</li>
                         </ul>
-                        <button class="secondary-btn font-mono" onclick="navigate('scanner')">Current Tier</button>
+                        <button class="secondary-btn font-mono" onclick="startScanningFreeTrial()">Start Scanning</button>
                     </div>
 
                     <!-- PRO -->
@@ -2195,6 +2195,16 @@
             }
         }
 
+        function startScanningFreeTrial() {
+            if (!userProfile) {
+                userProfile = { tier: 'pro' };
+            } else {
+                userProfile.tier = 'pro';
+            }
+            updateAuthUi(false);
+            navigate('scanner');
+        }
+
         // ── NAVIGATION CONTROLLER ────────────────────────────────────────────
         function navigate(viewId) {
             activeView = viewId;
@@ -2620,6 +2630,18 @@
             vTotal.textContent = data.summary.total_engines;
             
             scoreVal.textContent = data.risk_score;
+
+            // Set alert status colors dynamically based on threat classification
+            if (data.threat_level === 'HIGH') {
+                vTitle.style.color = "var(--danger)";
+                scoreVal.style.color = "var(--danger)";
+            } else if (data.threat_level === 'MEDIUM') {
+                vTitle.style.color = "var(--warning)";
+                scoreVal.style.color = "var(--warning)";
+            } else {
+                vTitle.style.color = "var(--success)";
+                scoreVal.style.color = "var(--success)";
+            }
             
             // Set circle color path
             scorePath.className = `circle-path circle-path-${data.threat_level.toLowerCase() === 'clean' ? 'clean' : (data.threat_level.toLowerCase() === 'medium' ? 'medium' : 'high')}`;
