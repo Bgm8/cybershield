@@ -24,6 +24,8 @@
         /* ── CSS STYLING SYSTEM ────────────────────────────────────────────────── */
         :root {
             --bg-main: #04070f;
+            --bg2: #070d1a;
+            --bg3: #0b1120;
             --primary: #00d4ff;
             --primary-glow: rgba(0, 212, 255, 0.25);
             --secondary: #0055ff;
@@ -34,10 +36,11 @@
             --warning: #ffaa00;
             --warning-glow: rgba(255, 170, 0, 0.25);
             --purple: #7c3aed;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --text-faint: #4b5563;
+            --text-main: #e8f0fe;
+            --text-muted: #8aa6c8;
+            --text-faint: #2a5a8a;
             --border-light: rgba(255, 255, 255, 0.07);
+            --border2: rgba(0, 212, 255, 0.25);
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.07);
         }
@@ -54,22 +57,47 @@
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
             line-height: 1.6;
+            min-height: 100vh;
         }
 
-        /* Pure CSS Animated Grid Dots Background */
-        .dot-grid {
+        /* ── ANIMATED GRID BG ── */
+        body::before {
+            content: '';
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-            background-size: 32px 32px;
-            z-index: -10;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 212, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
             pointer-events: none;
-            animation: shiftGrid 120s linear infinite;
+            z-index: -20;
         }
-        @keyframes shiftGrid {
-            from { background-position: 0 0; }
-            to { background-position: 1000px 1000px; }
+
+        /* ── SCANLINE ── */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -100%; left: 0; right: 0; height: 200px;
+            background: linear-gradient(transparent, rgba(0, 212, 255, 0.03), transparent);
+            animation: scanline 6s linear infinite;
+            pointer-events: none;
+            z-index: 10000;
         }
+        @keyframes scanline {
+            to { top: 100%; }
+        }
+
+        /* ── GLOW ORBS ── */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: -10;
+        }
+        .orb1 { width: 400px; height: 400px; background: rgba(0, 85, 255, 0.07); top: -100px; left: -100px; }
+        .orb2 { width: 300px; height: 300px; background: rgba(124, 58, 237, 0.05); top: 40%; right: -80px; }
+        .orb3 { width: 350px; height: 350px; background: rgba(0, 212, 255, 0.04); bottom: -100px; left: 30%; }
 
         /* ── FONTS & UTILITIES ─────────────────────────────────────────────────── */
         .font-display { font-family: 'Orbitron', sans-serif; }
@@ -281,56 +309,60 @@
 
         /* ── HERO SECTION ────────────────────────────────────────────────────── */
         .hero {
-            padding: 70px 0 40px;
+            padding: 80px 0 50px;
             text-align: center;
             position: relative;
+            max-width: 900px;
+            margin: 0 auto;
         }
         .hero-banner {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.8rem;
-            letter-spacing: 2px;
-            color: var(--success);
-            background: rgba(0, 255, 136, 0.06);
-            border: 1px solid rgba(0, 255, 136, 0.15);
             padding: 6px 16px;
-            border-radius: 50px;
-            margin-bottom: 24px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            background: rgba(0, 212, 255, 0.06);
+            font-size: 11px;
+            color: var(--primary);
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 2px;
+            margin-bottom: 28px;
+        }
+        .hero-banner-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 6px var(--primary);
+            animation: blink 1.5s ease-in-out infinite;
         }
         .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 16px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: clamp(32px, 5vw, 54px);
+            line-height: 1.15;
+            margin-bottom: 20px;
             color: #fff;
         }
-        /* Rotating Text style */
-        .rotating-text-wrapper {
-            height: 50px;
-            overflow: hidden;
-            display: block;
-            margin-top: 8px;
+        .hero-title span {
+            background: linear-gradient(135deg, var(--primary), #ffffff, var(--primary));
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 4s linear infinite;
         }
-        .rotating-text {
-            color: var(--primary);
-            animation: textRotation 12s cubic-bezier(0.68, -0.6, 0.32, 1.6) infinite;
+        @keyframes shine {
+            to { background-position: 200% center; }
         }
-        @keyframes textRotation {
-            0%, 20% { transform: translateY(0); }
-            25%, 45% { transform: translateY(-50px); }
-            50%, 70% { transform: translateY(-100px); }
-            75%, 95% { transform: translateY(-150px); }
-            100% { transform: translateY(0); }
-        }
-
         .hero-sub {
             max-width: 650px;
             margin: 0 auto 32px;
             color: var(--text-muted);
             font-size: 1.1rem;
+            font-weight: 300;
+            line-height: 1.7;
         }
-
         .live-banner {
             margin-top: 16px;
             font-size: 0.85rem;
@@ -339,29 +371,38 @@
 
         /* ── STATS BAR ───────────────────────────────────────────────────────── */
         .stats-bar {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 16px;
-            margin-bottom: 40px;
-            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 40px 60px;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            background: rgba(7, 13, 26, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 24px 40px;
+            margin: 48px 0;
+            border-radius: 12px;
         }
         .stat-card {
-            padding: 16px;
-            background: rgba(255,255,255,0.01);
-            border: 1px solid var(--border-light);
-            border-radius: 8px;
+            text-align: center;
+            background: none;
+            border: none;
+            padding: 0;
         }
         .stat-val {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-family: 'Orbitron', monospace;
+            font-size: 28px;
+            font-weight: 900;
             color: var(--primary);
+            line-height: 1;
+            margin-bottom: 6px;
         }
         .stat-lbl {
-            font-size: 0.72rem;
-            letter-spacing: 1px;
+            font-size: 10px;
             color: var(--text-muted);
+            letter-spacing: 3px;
+            font-family: 'Share Tech Mono', monospace;
             text-transform: uppercase;
-            margin-top: 4px;
         }
 
         /* ── MAIN VIEWS ──────────────────────────────────────────────────────── */
@@ -1108,7 +1149,9 @@
 </head>
 <body>
 
-    <div class="dot-grid"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
 
     <!-- Maintenance Global Alert Banner -->
     <div id="maintenance-alert" class="maintenance-warning-banner">
@@ -1162,16 +1205,25 @@
             
             <!-- ── HERO SECTION ── -->
             <section class="hero">
-                <div class="hero-banner font-mono">⚡ CYBERSHIELD SECURE GATEWAY ACTIVE</div>
-                <h1 class="hero-title font-display">
-                    Stay Safe Online.
-                    <div class="rotating-text-wrapper">
-                        <div class="rotating-text" id="rotator-text">Scan any URL</div>
-                    </div>
-                </h1>
+                <div class="hero-banner">
+                    <div class="hero-banner-dot"></div>
+                    REAL-TIME THREAT INTELLIGENCE PLATFORM
+                </div>
+                <h1 class="hero-title">Scan Any <span>Threat</span><br>in Seconds</h1>
                 <p class="hero-sub">
-                    Paste anything suspicious — a link, an IP address, an email, or a file hash — and we'll tell you if it's dangerous. Free, instant, no account needed.
+                    91+ security engines. Real-time intelligence. Zero guesswork. Protect yourself before attackers strike.
                 </p>
+                <div style="display: flex; gap: 14px; justify-content: center; margin-bottom: 40px; flex-wrap: wrap;">
+                    <button class="primary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="navigate('scanner')">Start Scanning Free →</button>
+                    <button class="secondary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="navigate('about')">View Platform Details</button>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;"><span>🔬</span> VirusTotal</div>
+                    <div style="display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;"><span>🚨</span> AbuseIPDB</div>
+                    <div style="display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;"><span>🌐</span> AlienVault OTX</div>
+                    <div style="display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;"><span>🎣</span> PhishTank</div>
+                    <div style="display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;"><span>🔍</span> URLScan.io</div>
+                </div>
                 <div class="hero-actions" style="justify-content: center;">
                     <span class="font-mono text-faint" id="protected-counter">🛡️ 142,392 people protected today</span>
                 </div>
