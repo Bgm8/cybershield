@@ -1132,6 +1132,7 @@
                     <button class="nav-tab-btn font-display" onclick="navigate('pricing')">💰 Pricing</button>
                     <button class="nav-tab-btn font-display" onclick="navigate('byok')">⚙️ My API Keys</button>
                     <button class="nav-tab-btn font-display" onclick="navigate('about')">📖 About</button>
+                    <button class="nav-tab-btn font-display" id="nav-btn-admin" style="display: none; color: var(--danger);" onclick="navigate('admin')">🔒 Admin</button>
                 </nav>
 
                 <div class="auth-header-group">
@@ -1730,6 +1731,176 @@
             </div>
         </main>
 
+        <!-- ── 8. ADMIN CONTROL INTERFACE ── -->
+        <div id="view-admin" class="view-panel" style="text-align: left;">
+            <div style="margin-bottom: 24px;">
+                <h2 class="font-display" style="color: var(--danger); font-size: 1.5rem; margin: 0 0 4px 0; letter-spacing: 1px;">🔒 ADMINISTRATIVE HUB</h2>
+                <p class="font-mono text-xs text-muted">System Management Console & Telemetry</p>
+            </div>
+            
+            <nav class="admin-nav" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-light); padding-bottom: 16px;">
+                <div style="display: flex; gap: 8px;">
+                    <button class="admin-tab active font-mono" onclick="navigateAdmin('stats')">TELEMETRY STATS</button>
+                    <button class="admin-tab font-mono" onclick="navigateAdmin('activity')">LIVE ACTIVITY FEED</button>
+                    <button class="admin-tab font-mono" onclick="navigateAdmin('users')">USER RECORDS</button>
+                    <button class="admin-tab font-mono" onclick="navigateAdmin('waitlist')">WAITLIST</button>
+                    <button class="admin-tab font-mono" onclick="navigateAdmin('health')">SYSTEM HEALTH</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="maintenance-btn-switch font-mono" id="admin-maintenance-btn" onclick="toggleMaintenanceMode()">MAINTENANCE MODE: OFF</button>
+                    <button class="secondary-btn font-mono" style="padding: 6px 12px; border-color: var(--danger); color: var(--danger);" onclick="exitAdmin()">Exit Admin</button>
+                </div>
+            </nav>
+
+            <main>
+                <!-- ADMIN VIEW: STATS -->
+                <div id="admin-view-stats" class="admin-view-panel active">
+                    <div class="stats-bar">
+                        <div class="stat-card glass-panel" style="border-top: 2px solid var(--danger);">
+                            <div class="stat-val font-display" id="admin-total-scans">--</div>
+                            <div class="stat-lbl font-mono">Total Scans Ever</div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-val font-display" id="admin-scans-today">--</div>
+                            <div class="stat-lbl font-mono">Scans Today</div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-val font-display" id="admin-scans-week">--</div>
+                            <div class="stat-lbl font-mono">Scans This Week</div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-val font-display" id="admin-registered-users">--</div>
+                            <div class="stat-lbl font-mono">Supabase Users</div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-val font-display" id="admin-errors-today" style="color: var(--danger);">--</div>
+                            <div class="stat-lbl font-mono">Errors Today</div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Analytics Charts -->
+                    <div class="admin-charts-grid">
+                        <div class="chart-container glass-panel">
+                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">📈 SCANS VOLUME (LAST 24 HOURS)</h4>
+                            <div style="height: 250px; position: relative;">
+                                <canvas id="chart-scans-hours"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container glass-panel">
+                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">🍩 THREAT CLASSIFICATION RATIOS</h4>
+                            <div style="height: 250px; position: relative;">
+                                <canvas id="chart-threats-donut"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN VIEW: ACTIVITY -->
+                <div id="admin-view-activity" class="admin-view-panel" style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 class="font-display">⚡ Live Scan Activity (Refresh 10s)</h3>
+                        <button class="secondary-btn font-mono" onclick="exportAdminActivityCsv()">Export CSV</button>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Target ID</th>
+                                    <th>Service Used</th>
+                                    <th>Threat level</th>
+                                    <th>Index</th>
+                                    <th>Client (Hash)</th>
+                                    <th>Response Time</th>
+                                    <th>BYOK</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-activity-rows">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ADMIN VIEW: USERS -->
+                <div id="admin-view-users" class="admin-view-panel" style="text-align: left;">
+                    <h3 class="font-display mb-6">👥 Registered User Directory</h3>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>UID Reference</th>
+                                    <th>Email Address</th>
+                                    <th>Tier Badge</th>
+                                    <th>Total Scans</th>
+                                    <th>Scans Today</th>
+                                    <th>Banned Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-rows">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ADMIN VIEW: WAITLIST -->
+                <div id="admin-view-waitlist" class="admin-view-panel" style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 class="font-display">📬 Early Access Waitlist</h3>
+                        <button class="secondary-btn font-mono" onclick="exportAdminWaitlistCsv()">Export CSV</button>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Waitlist ID</th>
+                                    <th>Email</th>
+                                    <th>Signup Source</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-waitlist-rows">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ADMIN VIEW: HEALTH -->
+                <div id="admin-view-health" class="admin-view-panel" style="text-align: left;">
+                    <h3 class="font-display mb-6">🩺 System Health Diagnostics</h3>
+                    
+                    <div class="admin-charts-grid" style="grid-template-columns: 1fr 2fr;">
+                        <div class="chart-container glass-panel">
+                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">⚙️ KEY API STATUS</h4>
+                            <div class="kv-grid" id="admin-health-keys-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="chart-container glass-panel">
+                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">🚨 ERROR REGISTER LOG (LAST 10)</h4>
+                            <div class="admin-table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 150px;">Time</th>
+                                            <th>Error Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-health-errors">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
         <!-- FOOTER -->
         <footer>
             <div class="container footer-grid">
@@ -1759,174 +1930,6 @@
                 &copy; 2026 CyberShield AI Security Platform. All Rights Reserved.
             </div>
         </footer>
-    </div>
-
-    <!-- ── 8. ADMIN CONTROL INTERFACE ──────────────────────────────────────── -->
-    <div id="admin-panel">
-        <header class="admin-header">
-            <div class="container header-wrapper">
-                <div class="admin-logo font-display">⚡ CYBERSHIELD CONTROL PANEL</div>
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <button class="maintenance-btn-switch font-mono" id="admin-maintenance-btn" onclick="toggleMaintenanceMode()">MAINTENANCE MODE: OFF</button>
-                    <button class="secondary-btn font-mono" style="padding: 6px 12px; border-color: var(--danger); color: var(--danger);" onclick="exitAdmin()">Exit Admin</button>
-                </div>
-            </div>
-        </header>
-
-        <nav class="admin-nav" role="navigation" aria-label="Admin tabs">
-            <button class="admin-tab active font-mono" onclick="navigateAdmin('stats')">TELEMETRY STATS</button>
-            <button class="admin-tab font-mono" onclick="navigateAdmin('activity')">LIVE ACTIVITY FEED</button>
-            <button class="admin-tab font-mono" onclick="navigateAdmin('users')">USER RECORDS</button>
-            <button class="admin-tab font-mono" onclick="navigateAdmin('waitlist')">WAITLIST</button>
-            <button class="admin-tab font-mono" onclick="navigateAdmin('health')">SYSTEM HEALTH</button>
-        </nav>
-
-        <main class="container">
-            <!-- ADMIN VIEW: STATS -->
-            <div id="admin-view-stats" class="admin-view-panel active">
-                <div class="stats-bar">
-                    <div class="stat-card glass-panel" style="border-top: 2px solid var(--danger);">
-                        <div class="stat-val font-display" id="admin-total-scans">--</div>
-                        <div class="stat-lbl font-mono">Total Scans Ever</div>
-                    </div>
-                    <div class="stat-card glass-panel">
-                        <div class="stat-val font-display" id="admin-scans-today">--</div>
-                        <div class="stat-lbl font-mono">Scans Today</div>
-                    </div>
-                    <div class="stat-card glass-panel">
-                        <div class="stat-val font-display" id="admin-scans-week">--</div>
-                        <div class="stat-lbl font-mono">Scans This Week</div>
-                    </div>
-                    <div class="stat-card glass-panel">
-                        <div class="stat-val font-display" id="admin-registered-users">--</div>
-                        <div class="stat-lbl font-mono">Supabase Users</div>
-                    </div>
-                    <div class="stat-card glass-panel">
-                        <div class="stat-val font-display" id="admin-errors-today" style="color: var(--danger);">--</div>
-                        <div class="stat-lbl font-mono">Errors Today</div>
-                    </div>
-                </div>
-
-                <!-- Admin Analytics Charts -->
-                <div class="admin-charts-grid">
-                    <div class="chart-container glass-panel">
-                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">📈 SCANS VOLUME (LAST 24 HOURS)</h4>
-                        <div style="height: 250px; position: relative;">
-                            <canvas id="chart-scans-hours"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-container glass-panel">
-                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">🍩 THREAT CLASSIFICATION RATIOS</h4>
-                        <div style="height: 250px; position: relative;">
-                            <canvas id="chart-threats-donut"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ADMIN VIEW: ACTIVITY -->
-            <div id="admin-view-activity" class="admin-view-panel" style="text-align: left;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                    <h3 class="font-display">⚡ Live Scan Activity (Refresh 10s)</h3>
-                    <button class="secondary-btn font-mono" onclick="exportAdminActivityCsv()">Export CSV</button>
-                </div>
-                <div class="admin-table-wrapper">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Target ID</th>
-                                <th>Service Used</th>
-                                <th>Threat level</th>
-                                <th>Index</th>
-                                <th>Client (Hash)</th>
-                                <th>Response Time</th>
-                                <th>BYOK</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-activity-rows">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ADMIN VIEW: USERS -->
-            <div id="admin-view-users" class="admin-view-panel" style="text-align: left;">
-                <h3 class="font-display mb-6">👥 Registered User Directory</h3>
-                <div class="admin-table-wrapper">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>UID Reference</th>
-                                <th>Email Address</th>
-                                <th>Tier Badge</th>
-                                <th>Total Scans</th>
-                                <th>Scans Today</th>
-                                <th>Banned Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-users-rows">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ADMIN VIEW: WAITLIST -->
-            <div id="admin-view-waitlist" class="admin-view-panel" style="text-align: left;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                    <h3 class="font-display">📬 Early Access Waitlist</h3>
-                    <button class="secondary-btn font-mono" onclick="exportAdminWaitlistCsv()">Export CSV</button>
-                </div>
-                <div class="admin-table-wrapper">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Waitlist ID</th>
-                                <th>Email</th>
-                                <th>Signup Source</th>
-                                <th>Created At</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-waitlist-rows">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ADMIN VIEW: HEALTH -->
-            <div id="admin-view-health" class="admin-view-panel" style="text-align: left;">
-                <h3 class="font-display mb-6">🩺 System Health Diagnostics</h3>
-                
-                <div class="admin-charts-grid" style="grid-template-columns: 1fr 2fr;">
-                    <div class="chart-container glass-panel">
-                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">⚙️ KEY API STATUS</h4>
-                        <div class="kv-grid" id="admin-health-keys-list">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-                    <div class="chart-container glass-panel">
-                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">🚨 ERROR REGISTER LOG (LAST 10)</h4>
-                        <div class="admin-table-wrapper" style="max-height: 220px; overflow-y: auto;">
-                            <table class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 150px;">Time</th>
-                                        <th>Error Message</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="admin-health-errors">
-                                    <!-- Populated dynamically -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
     </div>
 
     <!-- ── MODAL OVERLAYS ── -->
@@ -2093,6 +2096,17 @@
             refreshKeysStatus();
 
             window.addEventListener('hashchange', checkUrlHash);
+
+            // Bind Enter key trigger for search input
+            const scanInput = document.getElementById("scan-target");
+            if (scanInput) {
+                scanInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        runMainScan();
+                    }
+                });
+            }
         });
 
         // Headline rotater handler
@@ -2112,10 +2126,21 @@
 
         function checkUrlHash() {
             const hash = window.location.hash;
+            const token = sessionStorage.getItem("cs_admin_jwt");
             if (hash === "#admin") {
-                openAdminVerifyModal();
+                if (token) {
+                    adminToken = token;
+                    enterAdminPanel();
+                } else {
+                    openAdminVerifyModal();
+                }
             } else {
-                exitAdmin();
+                if (token) {
+                    adminToken = token;
+                    document.getElementById("nav-btn-admin").style.display = "inline-block";
+                } else {
+                    exitAdmin();
+                }
             }
         }
 
@@ -2290,6 +2315,7 @@
             document.querySelectorAll('.scan-selector-btn').forEach(btn => btn.classList.remove('active'));
             if (type === 'url') document.getElementById('btn-sel-url').classList.add('active');
             else document.getElementById('btn-sel-ip').classList.add('active');
+            document.getElementById("scan-target").value = "";
         }
 
         async function runMainScan() {
@@ -2370,6 +2396,130 @@
                 loadingWrapper.style.display = "none";
                 errorBox.textContent = `Hmm, we couldn't complete the scan. ${e.message}`;
                 errorBox.style.display = "block";
+            }
+        }
+
+        function isPremiumOrAdmin() {
+            const isAdmin = !!(adminToken || sessionStorage.getItem("cs_admin_jwt"));
+            const isPremium = userProfile && (userProfile.tier === 'pro' || userProfile.tier === 'byok');
+            return isAdmin || isPremium;
+        }
+
+        async function loadPremiumIntelligence(target, type, detailsStack) {
+            const premPanel = document.createElement("div");
+            premPanel.className = "glass-panel";
+            premPanel.style.marginTop = "20px";
+            premPanel.style.border = "1px solid var(--blue2)";
+            premPanel.style.animation = "slideUp 0.3s ease-out";
+            
+            premPanel.innerHTML = `
+                <div class="card-header-line" style="background: linear-gradient(90deg, var(--blue), var(--blue2)); height: 3px; width: 100%; border-top-left-radius: 8px; border-top-right-radius: 8px;"></div>
+                <div style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 class="font-display" style="color: var(--blue); font-size: 1.1rem; margin: 0;">⚡ PREMIUM THREAT INTELLIGENCE AUDIT</h3>
+                        <span class="tier-badge tier-pro">PREMIUM</span>
+                    </div>
+                    <div id="premium-intel-content">
+                        <div class="font-mono text-sm text-muted animate-pulse">
+                            <span class="loading-spinner" style="display: inline-block; width: 14px; height: 14px; margin-right: 8px; border-width: 2px;"></span>
+                            Resolving advanced WHOIS records, DNS security policies, and threat feeds...
+                        </div>
+                    </div>
+                </div>
+            `;
+            detailsStack.appendChild(premPanel);
+
+            const intelContent = premPanel.querySelector("#premium-intel-content");
+
+            try {
+                if (type === 'url') {
+                    const domain = target.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0];
+                    const [dnsRes, whoisRes] = await Promise.all([
+                        fetch(`${BACKEND_URL}/check/dns`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ domain })
+                        }).then(r => r.json()),
+                        fetch(`${BACKEND_URL}/check/whois`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ domain })
+                        }).then(r => r.json())
+                    ]);
+
+                    let html = `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">WHOIS DOMAIN METADATA</h4>
+                                <div class="kv-grid text-xs">
+                                    <div class="kv-row"><span>Registrar</span><span>${escapeHtml(whoisRes.registrar || 'Unknown')}</span></div>
+                                    <div class="kv-row"><span>Age</span><span>${whoisRes.is_new_domain ? '🔴 NEW REGISTRATION' : '🟢 Established'}</span></div>
+                                    <div class="kv-row"><span>Country</span><span>${escapeHtml(whoisRes.registrant_country || 'Unknown')}</span></div>
+                                    <div class="kv-row"><span>Expiry</span><span>In ${escapeHtml(whoisRes.days_until_expiry || '0')} days</span></div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">DNS SECURITY CONFIGS</h4>
+                                <div class="kv-grid text-xs">
+                                    <div class="kv-row"><span>SPF Policy</span><span>${dnsRes.has_spf ? '🟢 Configured' : '🔴 MISSING'}</span></div>
+                                    <div class="kv-row"><span>DMARC Policy</span><span>${dnsRes.has_dmarc ? '🟢 Configured' : '🔴 MISSING'}</span></div>
+                                    <div class="kv-row"><span>DKIM Selector</span><span>${dnsRes.has_dkim ? '🟢 Configured' : '🟡 Unconfirmed'}</span></div>
+                                    <div class="kv-row"><span>Spoofing Vulnerable</span><span>${(!dnsRes.has_spf || !dnsRes.has_dmarc) ? '🔴 HIGH RISK' : '🟢 Low Risk'}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    intelContent.innerHTML = html;
+                } else if (type === 'ip') {
+                    const [blacklistRes, otxRes] = await Promise.all([
+                        fetch(`${BACKEND_URL}/check/blacklist`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ ip: target })
+                        }).then(r => r.json()),
+                        fetch(`${BACKEND_URL}/check/otx`, {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "X-User-OTX-Key": localStorage.getItem("cs_key_otx") || ""
+                            },
+                            body: JSON.stringify({ indicator: target, type: "IPv4" })
+                        }).then(r => r.json())
+                    ]);
+
+                    let otxInfo = "";
+                    if (otxRes.error) {
+                        otxInfo = `<span class="text-warning">OTX feed locked (API key required)</span>`;
+                    } else {
+                        otxInfo = `<span>${escapeHtml(otxRes.pulse_count)} Pulses / Score: ${escapeHtml(otxRes.threat_score)}</span>`;
+                    }
+
+                    let html = `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">DNSBL DATABASE MATCHES</h4>
+                                <div class="kv-grid text-xs">
+                                    <div class="kv-row"><span>Listed Count</span><span>${escapeHtml(blacklistRes.listed_count)} / ${escapeHtml(blacklistRes.total_checked)}</span></div>
+                                    <div class="kv-row"><span>Status Verdict</span><span>${escapeHtml(blacklistRes.recommendation)}</span></div>
+                                    <div class="kv-row"><span>Spamhaus Zen</span><span>${blacklistRes.listed_on.includes('zen.spamhaus.org') ? '🔴 LISTED' : '🟢 Clean'}</span></div>
+                                    <div class="kv-row"><span>Spamcop BL</span><span>${blacklistRes.listed_on.includes('bl.spamcop.net') ? '🔴 LISTED' : '🟢 Clean'}</span></div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">ALIENVAULT RESEARCH</h4>
+                                <div class="kv-grid text-xs">
+                                    <div class="kv-row"><span>Indicator Status</span><span>${otxInfo}</span></div>
+                                    <div class="kv-row"><span>Malware Tags</span><span>${otxRes.tags ? otxRes.tags.slice(0, 4).join(', ') || 'None' : 'N/A'}</span></div>
+                                    <div class="kv-row"><span>Adversaries</span><span>${otxRes.adversaries ? otxRes.adversaries.slice(0, 2).join(', ') || 'None' : 'N/A'}</span></div>
+                                    <div class="kv-row"><span>Target Country</span><span>${escapeHtml(otxRes.country || 'N/A')}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    intelContent.innerHTML = html;
+                }
+            } catch (e) {
+                intelContent.innerHTML = `<div class="text-danger font-mono text-xs">Failed to load advanced premium checks: ${escapeHtml(e.message)}</div>`;
             }
         }
 
@@ -2458,6 +2608,28 @@
                 existingGeo.style.display = "none";
             }
 
+            // 6. Premium intelligence integration
+            if (isPremiumOrAdmin()) {
+                loadPremiumIntelligence(data.target, currentScanType, detailsStack);
+            } else {
+                const upsell = document.createElement("div");
+                upsell.className = "glass-panel";
+                upsell.style.padding = "20px";
+                upsell.style.border = "1px solid rgba(124, 58, 237, 0.2)";
+                upsell.style.borderRadius = "8px";
+                upsell.style.marginTop = "20px";
+                upsell.style.background = "rgba(124, 58, 237, 0.02)";
+                upsell.style.textAlign = "center";
+                upsell.innerHTML = `
+                    <h4 class="font-display text-sm" style="color: var(--purple); margin: 0 0 6px 0;">🔒 PREMIUM THREAT AUDITS OVERVIEW</h4>
+                    <p class="font-outfit text-xs text-muted" style="max-width: 450px; margin: 0 auto 12px; line-height: 1.5;">
+                        Create a free account or upgrade to Pro to automatically execute DNS, WHOIS registry age audits, and spam lists matches on every query.
+                    </p>
+                    <button class="secondary-btn font-mono" style="padding: 5px 12px; font-size: 0.72rem;" onclick="navigate('pricing')">LEARN MORE</button>
+                `;
+                detailsStack.appendChild(upsell);
+            }
+
             resultsSheet.style.display = "block";
             
             // Add to session timeline history
@@ -2484,14 +2656,32 @@
             let count = 0;
             const CLEAN_KEYWORDS = ["CLEAN", "UNDETECTED", "HARMLESS"];
 
-            Object.entries(allEngineData).forEach(([name, status]) => {
+            // 1. Sort: suspicious/malicious first, then clean, then alphabetically
+            const sortedEngines = Object.entries(allEngineData).sort(([nameA, statusA], [nameB, statusB]) => {
+                const isCleanA = CLEAN_KEYWORDS.includes(statusA.toUpperCase());
+                const isCleanB = CLEAN_KEYWORDS.includes(statusB.toUpperCase());
+                if (!isCleanA && isCleanB) return -1;
+                if (isCleanA && !isCleanB) return 1;
+                return nameA.localeCompare(nameB);
+            });
+
+            const premium = isPremiumOrAdmin();
+            let limitReached = false;
+
+            sortedEngines.forEach(([name, status]) => {
                 const matchSearch = name.toLowerCase().includes(searchVal);
-                const isClean = CLEAN_KEYWORDS.includes(status);
+                const isClean = CLEAN_KEYWORDS.includes(status.toUpperCase());
 
                 if (!matchSearch) return;
 
                 if (filter === 'malicious' && isClean) return;
                 if (filter === 'clean' && !isClean) return;
+
+                // 2. Limit free accounts to 10 engines
+                if (!premium && count >= 10) {
+                    limitReached = true;
+                    return;
+                }
 
                 const item = document.createElement("div");
                 item.className = `engine-item ${isClean ? 'status-clean' : 'status-malicious'}`;
@@ -2510,6 +2700,27 @@
                 list.appendChild(item);
                 count++;
             });
+
+            // 3. Show unlock prompt banner if results are limited
+            if (limitReached) {
+                const banner = document.createElement("div");
+                banner.className = "glass-panel";
+                banner.style.gridColumn = "1 / -1";
+                banner.style.padding = "24px";
+                banner.style.textAlign = "center";
+                banner.style.border = "1px dashed var(--blue)";
+                banner.style.borderRadius = "8px";
+                banner.style.marginTop = "16px";
+                banner.style.background = "rgba(0, 212, 255, 0.02)";
+                banner.innerHTML = `
+                    <h4 class="font-display" style="color: var(--blue); margin: 0 0 8px 0;">🔒 Unlock 81+ More Security Engines</h4>
+                    <p class="font-outfit text-xs text-muted" style="max-width: 480px; margin: 0 auto 16px; line-height: 1.5;">
+                        You are viewing a subset of the security engines. Create a free account or upgrade to Pro to view audits across all 91+ threat intelligence providers.
+                    </p>
+                    <button class="primary-btn font-display" style="padding: 8px 16px; font-size: 0.8rem;" onclick="navigate('pricing')">GET UNLIMITED ACCESS</button>
+                `;
+                list.appendChild(banner);
+            }
 
             document.getElementById("engine-cnt").textContent = count;
         }
@@ -2987,9 +3198,8 @@
         }
 
         function enterAdminPanel() {
-            // Hide standard UI, show Admin
-            document.getElementById("main-ui").style.display = "none";
-            document.getElementById("admin-panel").style.display = "block";
+            document.getElementById("nav-btn-admin").style.display = "inline-block";
+            navigate('admin');
             
             loadAdminStats();
             initAdminCharts();
@@ -3006,14 +3216,14 @@
             sessionStorage.removeItem("cs_admin_jwt");
             clearInterval(adminRefreshInterval);
 
-            document.getElementById("main-ui").style.display = "block";
-            document.getElementById("admin-panel").style.display = "none";
+            document.getElementById("nav-btn-admin").style.display = "none";
             closeAdminVerifyModal();
             
             // Clear hash
             if (window.location.hash === "#admin") {
                 window.location.hash = "";
             }
+            navigate('scanner');
         }
 
         function navigateAdmin(tabId) {
@@ -3072,17 +3282,77 @@
                     tr.className = `row-${item.threat_level.toLowerCase()}`;
                     tr.innerHTML = `
                         <td>${new Date(item.timestamp).toLocaleTimeString()}</td>
-                        <td class="font-mono">${item.target_hash}</td>
-                        <td>${item.service_used}</td>
-                        <td><span class="risk-badge risk-${item.threat_level.toLowerCase()}">${item.threat_level}</span></td>
+                        <td class="font-mono" style="font-size: 0.75rem;">${escapeHtml(item.target_hash)}</td>
+                        <td>${escapeHtml(item.service_used)}</td>
+                        <td><span class="risk-badge risk-${item.threat_level.toLowerCase()}">${escapeHtml(item.threat_level)}</span></td>
                         <td class="font-mono">${item.risk_score}</td>
-                        <td class="font-mono">${item.client_ip_hash}</td>
+                        <td class="font-mono" style="font-size: 0.75rem;">${escapeHtml(item.client_ip_hash)}</td>
                         <td>${item.response_time_ms} ms</td>
                         <td>${item.used_personal_key ? 'YES' : 'NO'}</td>
+                        <td>
+                            <button class="secondary-btn font-mono audit-btn" style="padding: 3px 6px; font-size: 0.72rem; margin-right: 4px;">Audit</button>
+                            <button class="secondary-btn font-mono purge-btn" style="padding: 3px 6px; font-size: 0.72rem; border-color: var(--danger); color: var(--danger);">Purge</button>
+                        </td>
                     `;
+                    const auditBtn = tr.querySelector('.audit-btn');
+                    if (auditBtn) {
+                        auditBtn.addEventListener('click', () => showAdminAuditReport(item));
+                    }
+                    const purgeBtn = tr.querySelector('.purge-btn');
+                    if (purgeBtn) {
+                        purgeBtn.addEventListener('click', () => purgeAdminScanEntry(item.target_hash, item.timestamp));
+                    }
                     tbody.appendChild(tr);
                 });
             } catch (e) {}
+        }
+
+        function showAdminAuditReport(item) {
+            const existing = document.getElementById("admin-audit-modal");
+            if (existing) existing.remove();
+
+            const modal = document.createElement("div");
+            modal.id = "admin-audit-modal";
+            modal.className = "modal-overlay";
+            modal.style.display = "flex";
+            modal.style.zIndex = "9999";
+            
+            modal.innerHTML = `
+                <div class="modal-card" style="max-width: 600px; width: 90%;">
+                    <button class="modal-close" id="close-audit-modal">×</button>
+                    <h2 class="font-display mb-4" style="color: var(--blue);">🔬 ADVANCED THREAT AUDIT</h2>
+                    <div style="max-height: 400px; overflow-y: auto; text-align: left; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 6px; border: 1px solid var(--border-light);">
+                        <pre class="font-mono text-xs" style="color: var(--success); white-space: pre-wrap; margin: 0;">${escapeHtml(JSON.stringify(item, null, 2))}</pre>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector("#close-audit-modal").addEventListener("click", () => {
+                modal.remove();
+            });
+        }
+
+        async function purgeAdminScanEntry(target_hash, timestamp) {
+            if (!confirm("Are you sure you want to purge this scan entry from memory?")) return;
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/purge-scan`, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({ target_hash, timestamp })
+                });
+                if (res.status === 200) {
+                    loadAdminActivity();
+                } else {
+                    alert("Purge request failed.");
+                }
+            } catch (e) {
+                alert("Failed to reach backend.");
+            }
         }
 
         async function loadAdminUsers() {
@@ -3107,9 +3377,14 @@
                         <td class="font-mono">${u.scans_today}</td>
                         <td>${u.is_banned ? '🔴 Suspended' : '🟢 Active'}</td>
                         <td>
+                            <button class="secondary-btn font-mono tier-toggle-btn" style="padding: 3px 6px; font-size: 0.72rem; margin-right: 4px;">Tier</button>
                             <button class="secondary-btn font-mono ban-toggle-btn" style="padding: 3px 6px; font-size: 0.72rem;">${u.is_banned ? 'Unban' : 'Suspend'}</button>
                         </td>
                     `;
+                    const tierBtn = tr.querySelector('.tier-toggle-btn');
+                    if (tierBtn) {
+                        tierBtn.addEventListener('click', () => changeUserTier(u.id, u.tier));
+                    }
                     const toggleBtn = tr.querySelector('.ban-toggle-btn');
                     if (toggleBtn) {
                         toggleBtn.addEventListener('click', () => toggleBanUser(u.id, u.is_banned));
@@ -3117,6 +3392,24 @@
                     tbody.appendChild(tr);
                 });
             } catch (e) {}
+        }
+
+        async function changeUserTier(uid, currentTier) {
+            if (!supabase) return;
+            const newTier = prompt(`Update subscription tier for User UID:\n${uid}\n\nEnter new tier value (free, pro, byok):`, currentTier);
+            if (!newTier) return;
+            const cleanTier = newTier.toLowerCase().trim();
+            if (!['free', 'pro', 'byok'].includes(cleanTier)) {
+                alert("Invalid tier classification! Must be free, pro, or byok.");
+                return;
+            }
+            try {
+                const { error } = await supabase.table("profiles").update({ tier: cleanTier }).eq("id", uid);
+                if (error) throw error;
+                loadAdminUsers();
+            } catch (e) {
+                alert("Failed to update user subscription tier.");
+            }
         }
 
         async function toggleBanUser(uid, currentlyBanned) {

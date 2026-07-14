@@ -1147,6 +1147,19 @@ async def get_admin_health(sub: str = Depends(verify_admin_token)):
         "maintenance_mode": MAINTENANCE_MODE
     }
 
+class PurgeScanRequest(BaseModel):
+    target_hash: str
+    timestamp: str
+
+@app.post("/admin/purge-scan")
+async def purge_scan(req: PurgeScanRequest, sub: str = Depends(verify_admin_token)):
+    global in_memory_scans
+    initial_len = len(in_memory_scans)
+    in_memory_scans = [s for s in in_memory_scans if not (s.get("target_hash") == req.target_hash and s.get("timestamp") == req.timestamp)]
+    if len(in_memory_scans) < initial_len:
+         return {"status": "success", "message": "Scan telemetry logs successfully purged."}
+    raise HTTPException(status_code=404, detail="Scan entry not found in memory telemetry.")
+
 # ── PUBLIC EARLY WAITLIST SIGNUP ────────────────────────────────────────────
 class WaitlistRequest(BaseModel):
     email: str
