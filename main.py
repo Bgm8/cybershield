@@ -218,12 +218,27 @@ def verify_admin_token(authorization: str = Header(None)) -> str:
         raise HTTPException(status_code=401, detail="Authentication token expired or corrupted.")
 
 def sanitize_input(value: str) -> str:
-    # Basic input sanitization to block HTML/script injections
-    bad_patterns = ["<script", "javascript:", "onload=", "onerror=", "DROP TABLE", "../"]
     cleaned = value.strip()
-    for pattern in bad_patterns:
-        if pattern.lower() in cleaned.lower():
-            raise HTTPException(status_code=400, detail="Safe validation failed: invalid character patterns.")
+    if len(cleaned) > 500:
+        raise HTTPException(status_code=400, detail="Safe validation failed: input length exceeds limits.")
+    
+    # Block characters common in XSS and SQL injection
+    block_chars = ["<", ">", '"', "'", ";", "--", "/*", "*/", "javascript:"]
+    for char in block_chars:
+        if char in cleaned:
+            raise HTTPException(status_code=400, detail="Safe validation failed: input contains forbidden characters.")
+            
+    # Deny typical attack patterns
+    import re
+    xss_patterns = [
+        r"(?i)on\w+\s*=",
+        r"(?i)eval\s*\(",
+        r"(?i)union\s+select",
+    ]
+    for pattern in xss_patterns:
+        if re.search(pattern, cleaned):
+            raise HTTPException(status_code=400, detail="Safe validation failed: input matches dangerous patterns.")
+            
     return cleaned
 
 async def enforce_limits(request: Request, user_id: str = None) -> bool:
@@ -1016,7 +1031,11 @@ async def scan_otx(request: Request, req: OtxRequest, x_user_otx_key: str = Head
 @app.post("/check/phishing")
 @limiter.limit("10/minute")
 async def scan_phishing(request: Request, req: PhishTankRequest, x_user_phishtank_key: str = Header(None)):
-    url = req.url  # Do NOT sanitize to avoid breaking encoded queries
+    url = req.url
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Invalid URL: must start with http:// or https://")
+    if "<" in url or ">" in url or '"' in url or "'" in url:
+        raise HTTPException(status_code=400, detail="Safe validation failed: input contains forbidden characters.")
     key = x_user_phishtank_key or PHISHTANK_KEY
     
     headers = {"User-Agent": "phishtank/CyberShield"}
@@ -1044,13 +1063,20 @@ async def scan_phishing(request: Request, req: PhishTankRequest, x_user_phishtan
 @app.post("/admin/verify")
 @limiter.limit("20/hour")
 async def verify_admin(request: Request, req: AdminVerifyRequest):
+    client_ip = get_remote_address(request)
+    client_hash = hash_ip(client_ip)
+    timestamp = datetime.utcnow().isoformat()
+    
     if req.password == ADMIN_PASSWORD:
+        print(f"[{timestamp}] [SECURITY_AUDIT] Successful admin login from IP hash: {client_hash}")
         token = jwt.encode(
-            {"sub": "admin", "exp": time.time() + 24 * 3600},
+            {"sub": "admin", "exp": time.time() + 4 * 3600},
             ADMIN_JWT_SECRET,
             algorithm="HS256"
         )
         return {"token": token}
+        
+    print(f"[{timestamp}] [SECURITY_AUDIT] [WARNING] Failed admin login attempt from IP hash: {client_hash}")
     raise HTTPException(status_code=401, detail="Access denied: invalid administration credentials.")
 
 @app.get("/admin/stats")

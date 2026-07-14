@@ -1753,7 +1753,6 @@
                 <div style="text-align: left;">
                     <h4 class="font-display" style="color: white; margin-bottom: 16px; font-size: 0.95rem;">Platform</h4>
                     <p style="font-size: 0.85rem; line-height: 1.6; margin-bottom: 12px;">No ads. No tracking. No selling your personal data.</p>
-                    <a href="#admin" class="font-mono" style="color: var(--danger); font-size: 0.8rem; text-decoration: none;">🔒 Administrative Area</a>
                 </div>
             </div>
             <div class="container footer-bottom">
@@ -2064,6 +2063,17 @@
         let currentEngineFilter = "all";
 
         const BACKEND_URL = "https://cybershield-production-2548.up.railway.app"; // Railway API backend URL
+
+        // Security: Escape HTML helper for XSS mitigation
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         // Headline rotating configurations
         const rotatorStrings = [
@@ -2439,9 +2449,9 @@
                 existingGeo.style.display = "block";
                 const grid = document.getElementById("results-geo-grid");
                 grid.innerHTML = `
-                    <div class="kv-row"><span>Country</span><span>${data.geo.country}</span></div>
-                    <div class="kv-row"><span>ISP</span><span>${data.geo.isp}</span></div>
-                    <div class="kv-row"><span>Domain</span><span>${data.geo.domain}</span></div>
+                    <div class="kv-row"><span>Country</span><span>${escapeHtml(data.geo.country)}</span></div>
+                    <div class="kv-row"><span>ISP</span><span>${escapeHtml(data.geo.isp)}</span></div>
+                    <div class="kv-row"><span>Domain</span><span>${escapeHtml(data.geo.domain)}</span></div>
                     <div class="kv-row"><span>TOR exit node</span><span>${data.geo.is_tor ? 'YES 🔴' : 'NO'}</span></div>
                 `;
             } else {
@@ -2516,11 +2526,11 @@
                 card.className = "glass-panel history-item";
                 card.innerHTML = `
                     <div style="text-align: left;">
-                        <strong class="font-mono" style="word-break: break-all;">${item.target}</strong>
-                        <div class="font-mono text-faint" style="font-size: 0.75rem; margin-top: 4px;">${item.type} — ${item.timestamp}</div>
+                        <strong class="font-mono" style="word-break: break-all;">${escapeHtml(item.target)}</strong>
+                        <div class="font-mono text-faint" style="font-size: 0.75rem; margin-top: 4px;">${escapeHtml(item.type)} — ${escapeHtml(item.timestamp)}</div>
                     </div>
                     <div style="text-align: right;">
-                        <span class="risk-badge risk-${item.level.toLowerCase()}">${item.level}</span>
+                        <span class="risk-badge risk-${item.level.toLowerCase()}">${escapeHtml(item.level)}</span>
                         <div class="font-mono text-muted text-sm mt-1">Score: ${item.score}/100</div>
                     </div>
                 `;
@@ -2589,7 +2599,7 @@
                 loadingBox.style.display = "none";
                 badge.className = "risk-badge risk-danger";
                 badge.textContent = "Error";
-                resultBox.innerHTML = `<div class="text-danger font-mono text-sm">Scan failed: ${e.message}</div>`;
+                resultBox.innerHTML = `<div class="text-danger font-mono text-sm">Scan failed: ${escapeHtml(e.message)}</div>`;
                 resultBox.style.display = "block";
             }
         }
@@ -2604,24 +2614,24 @@
                 html = `
                     <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_suspicious ? '⚠️ This email looks suspicious — it was created recently and has credentials leaked.' : '✅ Looks safe! No major spam profiles found.'}</p>
                     <div class="kv-grid">
-                        <div class="kv-row"><span>Reputation</span><span>${data.reputation}</span></div>
+                        <div class="kv-row"><span>Reputation</span><span>${escapeHtml(data.reputation)}</span></div>
                         <div class="kv-row"><span>Disposable Email</span><span>${data.is_disposable ? 'YES 🔴' : 'NO'}</span></div>
-                        <div class="kv-row"><span>breaches Count</span><span>${data.breach_count}</span></div>
-                        <div class="kv-row"><span>Spam Score</span><span>${data.spam_score}</span></div>
+                        <div class="kv-row"><span>breaches Count</span><span>${escapeHtml(data.breach_count)}</span></div>
+                        <div class="kv-row"><span>Spam Score</span><span>${escapeHtml(data.spam_score)}</span></div>
                     </div>
                 `;
             } else if (service === "password") {
                 risk = data.is_pwned ? "danger" : "safe";
                 html = `
-                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_pwned ? `⚠️ This password has been pwned in data breaches ${data.times_seen} times. Change it immediately!` : '✅ This password has not been found in known leaks.'}</p>
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_pwned ? `⚠️ This password has been pwned in data breaches ${escapeHtml(data.times_seen)} times. Change it immediately!` : '✅ This password has not been found in known leaks.'}</p>
                     <div class="kv-grid">
-                        <div class="kv-row"><span>Strength Rating</span><span>${data.strength_label}</span></div>
-                        <div class="kv-row"><span>Strength Score</span><span>${data.strength_score} / 100</span></div>
+                        <div class="kv-row"><span>Strength Rating</span><span>${escapeHtml(data.strength_label)}</span></div>
+                        <div class="kv-row"><span>Strength Score</span><span>${escapeHtml(data.strength_score)} / 100</span></div>
                     </div>
                     <div class="mt-3">
                         <div class="font-mono text-muted mb-1 text-sm">RECOMMENDATIONS:</div>
                         <ul style="padding-left: 16px; font-size: 0.75rem;">
-                            ${data.recommendations.map(r => `<li>${r}</li>`).join('')}
+                            ${data.recommendations ? data.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('') : ''}
                         </ul>
                     </div>
                 `;
@@ -2630,19 +2640,19 @@
                 html = `
                     <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_new_domain ? '⚠️ This domain was registered only recently — common sign of phishing sites.' : '✅ Established domain.'}</p>
                     <div class="kv-grid">
-                        <div class="kv-row"><span>Registrar</span><span>${data.registrar}</span></div>
-                        <div class="kv-row"><span>Creation Date</span><span>${data.creation_date}</span></div>
-                        <div class="kv-row"><span>Expiry Date</span><span>${data.expiry_date}</span></div>
-                        <div class="kv-row"><span>Days Until Expiry</span><span>${data.days_until_expiry}</span></div>
+                        <div class="kv-row"><span>Registrar</span><span>${escapeHtml(data.registrar)}</span></div>
+                        <div class="kv-row"><span>Creation Date</span><span>${escapeHtml(data.creation_date)}</span></div>
+                        <div class="kv-row"><span>Expiry Date</span><span>${escapeHtml(data.expiry_date)}</span></div>
+                        <div class="kv-row"><span>Days Until Expiry</span><span>${escapeHtml(data.days_until_expiry)}</span></div>
                     </div>
                 `;
             } else if (service === "ssl") {
                 risk = ["A+", "A"].includes(data.grade) ? "safe" : (["B"].includes(data.grade) ? "warning" : "danger");
                 html = `
-                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> SSL Certificate Grade: <strong>${data.grade}</strong></p>
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> SSL Certificate Grade: <strong>${escapeHtml(data.grade)}</strong></p>
                     <div class="kv-grid">
-                        <div class="kv-row"><span>Issuer</span><span>${data.issuer}</span></div>
-                        <div class="kv-row"><span>Expiry Date</span><span>${data.expiry_date}</span></div>
+                        <div class="kv-row"><span>Issuer</span><span>${escapeHtml(data.issuer)}</span></div>
+                        <div class="kv-row"><span>Expiry Date</span><span>${escapeHtml(data.expiry_date)}</span></div>
                         <div class="kv-row"><span>TLS 1.3 Support</span><span>${data.supports_tls13 ? 'YES 🟢' : 'NO'}</span></div>
                         <div class="kv-row"><span>HSTS Present</span><span>${data.has_hsts ? 'YES 🟢' : 'NO'}</span></div>
                     </div>
@@ -2650,7 +2660,7 @@
             } else if (service === "dns") {
                 risk = data.security_status.includes("SECURE") ? "safe" : "warning";
                 html = `
-                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> Email security posture: ${data.security_status}</p>
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> Email security posture: ${escapeHtml(data.security_status)}</p>
                     <div class="kv-grid">
                         <div class="kv-row"><span>SPF Present</span><span>${data.has_spf ? 'YES 🟢' : 'NO 🔴'}</span></div>
                         <div class="kv-row"><span>DMARC Present</span><span>${data.has_dmarc ? 'YES 🟢' : 'NO 🔴'}</span></div>
@@ -2658,42 +2668,43 @@
                 `;
             } else if (service === "screenshot") {
                 risk = data.malicious_score > 0 ? "danger" : "safe";
+                const screenshotSrc = (data.screenshot_url && data.screenshot_url.startsWith("https://urlscan.io/")) ? data.screenshot_url : "";
                 html = `
                     <div style="text-align: center;">
-                        <img src="${data.screenshot_url}" alt="Website preview" style="max-width: 100%; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--border-light);">
+                        ${screenshotSrc ? `<img src="${screenshotSrc}" alt="Website preview" style="max-width: 100%; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--border-light);">` : '<div class="font-mono text-muted text-sm my-3">Preview unavailable</div>'}
                         <div class="kv-grid">
-                            <div class="kv-row"><span>Page Title</span><span>${data.page_title}</span></div>
-                            <div class="kv-row"><span>IP Address</span><span>${data.ip_address}</span></div>
-                            <div class="kv-row"><span>Tech Stack</span><span>${data.technologies.join(', ') || 'None detected'}</span></div>
+                            <div class="kv-row"><span>Page Title</span><span>${escapeHtml(data.page_title)}</span></div>
+                            <div class="kv-row"><span>IP Address</span><span>${escapeHtml(data.ip_address)}</span></div>
+                            <div class="kv-row"><span>Tech Stack</span><span>${data.technologies ? data.technologies.map(escapeHtml).join(', ') : 'None detected'}</span></div>
                         </div>
                     </div>
                 `;
             } else if (service === "blacklist") {
                 risk = data.listed_count > 0 ? "danger" : "safe";
                 html = `
-                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> Listed on ${data.listed_count} blacklist databases.</p>
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> Listed on ${escapeHtml(data.listed_count)} blacklist databases.</p>
                     <div class="kv-grid">
-                        <div class="kv-row"><span>Spamhaus Zen</span><span>${data.listed_on.includes('zen.spamhaus.org') ? 'LISTED 🔴' : 'CLEAN'}</span></div>
-                        <div class="kv-row"><span>Spamcop</span><span>${data.listed_on.includes('bl.spamcop.net') ? 'LISTED 🔴' : 'CLEAN'}</span></div>
+                        <div class="kv-row"><span>Spamhaus Zen</span><span>${data.listed_on && data.listed_on.includes('zen.spamhaus.org') ? 'LISTED 🔴' : 'CLEAN'}</span></div>
+                        <div class="kv-row"><span>Spamcop</span><span>${data.listed_on && data.listed_on.includes('bl.spamcop.net') ? 'LISTED 🔴' : 'CLEAN'}</span></div>
                     </div>
                 `;
             } else if (service === "hash") {
                 risk = data.is_known_malware ? "danger" : "safe";
                 html = data.is_known_malware ? `
-                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> 🚨 This file hash matches known malware family: <strong>${data.malware_family}</strong></p>
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> 🚨 This file hash matches known malware family: <strong>${escapeHtml(data.malware_family)}</strong></p>
                     <div class="kv-grid">
-                        <div class="kv-row"><span>File Type</span><span>${data.file_type}</span></div>
-                        <div class="kv-row"><span>File Size</span><span>${data.file_size} bytes</span></div>
-                        <div class="kv-row"><span>Tags</span><span>${data.tags.join(', ')}</span></div>
+                        <div class="kv-row"><span>File Type</span><span>${escapeHtml(data.file_type)}</span></div>
+                        <div class="kv-row"><span>File Size</span><span>${escapeHtml(data.file_size)} bytes</span></div>
+                        <div class="kv-row"><span>Tags</span><span>${data.tags ? data.tags.map(escapeHtml).join(', ') : ''}</span></div>
                     </div>
                 ` : `<p class="font-outfit text-sm">✅ Hash not found in known threat catalog indexes.</p>`;
             } else if (service === "otx") {
                 risk = data.pulse_count > 0 ? "danger" : "safe";
                 html = `
-                    <p class="font-outfit text-sm mb-3">Threat Pulses Found: <strong>${data.pulse_count}</strong></p>
+                    <p class="font-outfit text-sm mb-3">Threat Pulses Found: <strong>${escapeHtml(data.pulse_count)}</strong></p>
                     <div class="kv-grid">
-                        <div class="kv-row"><span>Pulse Count</span><span>${data.pulse_count}</span></div>
-                        <div class="kv-row"><span>Malware Families</span><span>${data.malware_families.join(', ') || 'None logged'}</span></div>
+                        <div class="kv-row"><span>Pulse Count</span><span>${escapeHtml(data.pulse_count)}</span></div>
+                        <div class="kv-row"><span>Malware Families</span><span>${data.malware_families ? data.malware_families.map(escapeHtml).join(', ') : 'None logged'}</span></div>
                     </div>
                 `;
             } else if (service === "phishing") {
@@ -2779,12 +2790,16 @@
                         const tr = document.createElement("tr");
                         tr.innerHTML = `
                             <td>${new Date(s.scanned_at).toLocaleDateString()}</td>
-                            <td class="font-mono" style="word-break: break-all;">${s.target}</td>
-                            <td>${s.scan_type}</td>
-                            <td><span class="risk-badge risk-${s.threat_level.toLowerCase()}">${s.threat_level}</span></td>
+                            <td class="font-mono" style="word-break: break-all;">${escapeHtml(s.target)}</td>
+                            <td>${escapeHtml(s.scan_type)}</td>
+                            <td><span class="risk-badge risk-${s.threat_level.toLowerCase()}">${escapeHtml(s.threat_level)}</span></td>
                             <td class="font-mono">${s.risk_score}</td>
-                            <td><button class="secondary-btn font-mono" style="padding: 3px 6px; font-size: 0.72rem;" onclick="reRunScan('${s.target}', '${s.scan_type}')">Scan</button></td>
+                            <td><button class="secondary-btn font-mono rerun-btn" style="padding: 3px 6px; font-size: 0.72rem;">Scan</button></td>
                         `;
+                        const rerunBtn = tr.querySelector('.rerun-btn');
+                        if (rerunBtn) {
+                            rerunBtn.addEventListener('click', () => reRunScan(s.target, s.scan_type));
+                        }
                         list.appendChild(tr);
                     });
                 } else {
@@ -3085,16 +3100,20 @@
                 data.users.forEach(u => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                        <td class="font-mono" style="font-size: 0.72rem;">${u.id}</td>
-                        <td>${u.email}</td>
-                        <td><span class="tier-badge tier-${u.tier}">${u.tier}</span></td>
+                        <td class="font-mono" style="font-size: 0.72rem;">${escapeHtml(u.id)}</td>
+                        <td>${escapeHtml(u.email)}</td>
+                        <td><span class="tier-badge tier-${escapeHtml(u.tier)}">${escapeHtml(u.tier)}</span></td>
                         <td class="font-mono">${u.total_scans}</td>
                         <td class="font-mono">${u.scans_today}</td>
                         <td>${u.is_banned ? '🔴 Suspended' : '🟢 Active'}</td>
                         <td>
-                            <button class="secondary-btn font-mono" style="padding: 3px 6px; font-size: 0.72rem;" onclick="toggleBanUser('${u.id}', ${u.is_banned})">${u.is_banned ? 'Unban' : 'Suspend'}</button>
+                            <button class="secondary-btn font-mono ban-toggle-btn" style="padding: 3px 6px; font-size: 0.72rem;">${u.is_banned ? 'Unban' : 'Suspend'}</button>
                         </td>
                     `;
+                    const toggleBtn = tr.querySelector('.ban-toggle-btn');
+                    if (toggleBtn) {
+                        toggleBtn.addEventListener('click', () => toggleBanUser(u.id, u.is_banned));
+                    }
                     tbody.appendChild(tr);
                 });
             } catch (e) {}
@@ -3126,9 +3145,9 @@
                 data.waitlist.forEach(w => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                        <td class="font-mono" style="font-size: 0.72rem;">${w.id}</td>
-                        <td>${w.email}</td>
-                        <td>${w.source}</td>
+                        <td class="font-mono" style="font-size: 0.72rem;">${escapeHtml(w.id)}</td>
+                        <td>${escapeHtml(w.email)}</td>
+                        <td>${escapeHtml(w.source)}</td>
                         <td>${new Date(w.created_at).toLocaleString()}</td>
                     `;
                     tbody.appendChild(tr);
@@ -3176,7 +3195,7 @@
                 if (errLogs.length > 0) {
                     errLogs.reverse().forEach(err => {
                         const tr = document.createElement("tr");
-                        tr.innerHTML = `<td>${new Date(err.timestamp).toLocaleTimeString()}</td><td class="text-danger font-mono" style="font-size: 0.75rem;">${err.message}</td>`;
+                        tr.innerHTML = `<td>${new Date(err.timestamp).toLocaleTimeString()}</td><td class="text-danger font-mono" style="font-size: 0.75rem;">${escapeHtml(err.message)}</td>`;
                         errBody.appendChild(tr);
                     });
                 } else {
