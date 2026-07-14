@@ -2510,7 +2510,7 @@
                     <div id="premium-intel-content">
                         <div class="font-mono text-sm text-muted animate-pulse">
                             <span class="loading-spinner" style="display: inline-block; width: 14px; height: 14px; margin-right: 8px; border-width: 2px;"></span>
-                            Resolving advanced WHOIS records, DNS security policies, and threat feeds...
+                            Running comprehensive deep sweeps (WHOIS, DNS records, SSL ratings, PhishTank reputation, AlienVault pulse feeds, Spam blacklists, and Sandboxed Screenshots)...
                         </div>
                     </div>
                 </div>
@@ -2522,7 +2522,7 @@
             try {
                 if (type === 'url') {
                     const domain = target.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0];
-                    const [dnsRes, whoisRes] = await Promise.all([
+                    const [dnsRes, whoisRes, sslRes, phishingRes, screenshotRes] = await Promise.all([
                         fetch(`${BACKEND_URL}/check/dns`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -2532,8 +2532,62 @@
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ domain })
+                        }).then(r => r.json()),
+                        fetch(`${BACKEND_URL}/check/ssl`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ domain })
+                        }).then(r => r.json()),
+                        fetch(`${BACKEND_URL}/check/phishing`, {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "X-User-Phishtank-Key": localStorage.getItem("cs_key_phishtank") || ""
+                            },
+                            body: JSON.stringify({ url: target.startsWith('http') ? target : `http://${target}` })
+                        }).then(r => r.json()),
+                        fetch(`${BACKEND_URL}/check/screenshot`, {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "X-User-Urlscan-Key": localStorage.getItem("cs_key_urlscan") || ""
+                            },
+                            body: JSON.stringify({ url: target.startsWith('http') ? target : `http://${target}` })
                         }).then(r => r.json())
                     ]);
+
+                    let sslInfo = "";
+                    if (sslRes.error) {
+                        sslInfo = `<span class="text-warning">SSL Labs rate limited or offline</span>`;
+                    } else {
+                        sslInfo = `<span>Grade: ${sslRes.grade || 'N/A'} (${sslRes.vulnerable ? '🔴 Vulnerable' : '🟢 Secure'})</span>`;
+                    }
+
+                    let phishingInfo = "";
+                    if (phishingRes.error) {
+                        phishingInfo = `<span>Unconfirmed / Feed error</span>`;
+                    } else {
+                        phishingInfo = phishingRes.is_phishing ? `🔴 PHISHING CONFIRMED (PhishTank)` : `🟢 Clean`;
+                    }
+
+                    let screenshotHtml = "";
+                    if (screenshotRes.screenshot_url && !screenshotRes.error) {
+                        screenshotHtml = `
+                            <div style="margin-top: 20px; border-top: 1px solid var(--border-light); padding-top: 16px;">
+                                <h4 class="font-display text-xs text-muted mb-3" style="font-weight: bold; letter-spacing: 0.5px;">SANDBOXED SCREENSHOT PREVIEW</h4>
+                                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; text-align: left;">
+                                    <div style="background: #000; border-radius: 6px; border: 1px solid var(--border-light); overflow: hidden; height: 180px; position: relative;">
+                                        <img src="${screenshotRes.screenshot_url}" alt="Sandboxed Screen Preview" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://placehold.co/400x200/0b1120/00d4ff?text=Screenshot+Pending'"/>
+                                    </div>
+                                    <div class="kv-grid text-xs">
+                                        <div class="kv-row"><span>Page Title</span><span style="word-break: break-all;">${escapeHtml(screenshotRes.page_title || 'N/A')}</span></div>
+                                        <div class="kv-row"><span>Server IP</span><span>${escapeHtml(screenshotRes.ip_address || 'N/A')}</span></div>
+                                        <div class="kv-row"><span>Technologies</span><span>${screenshotRes.technologies ? screenshotRes.technologies.slice(0, 3).join(', ') : 'N/A'}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
 
                     let html = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -2547,19 +2601,20 @@
                                 </div>
                             </div>
                             <div>
-                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">DNS SECURITY CONFIGS</h4>
+                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">DNS &amp; SECURITY CONFIGS</h4>
                                 <div class="kv-grid text-xs">
                                     <div class="kv-row"><span>SPF Policy</span><span>${dnsRes.has_spf ? '🟢 Configured' : '🔴 MISSING'}</span></div>
                                     <div class="kv-row"><span>DMARC Policy</span><span>${dnsRes.has_dmarc ? '🟢 Configured' : '🔴 MISSING'}</span></div>
-                                    <div class="kv-row"><span>DKIM Selector</span><span>${dnsRes.has_dkim ? '🟢 Configured' : '🟡 Unconfirmed'}</span></div>
-                                    <div class="kv-row"><span>Spoofing Vulnerable</span><span>${(!dnsRes.has_spf || !dnsRes.has_dmarc) ? '🔴 HIGH RISK' : '🟢 Low Risk'}</span></div>
+                                    <div class="kv-row"><span>SSL Grade</span><span>${sslInfo}</span></div>
+                                    <div class="kv-row"><span>PhishTank Status</span><span>${phishingInfo}</span></div>
                                 </div>
                             </div>
                         </div>
+                        ${screenshotHtml}
                     `;
                     intelContent.innerHTML = html;
                 } else if (type === 'ip') {
-                    const [blacklistRes, otxRes] = await Promise.all([
+                    const [blacklistRes, otxRes, phishingRes] = await Promise.all([
                         fetch(`${BACKEND_URL}/check/blacklist`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -2572,6 +2627,11 @@
                                 "X-User-OTX-Key": localStorage.getItem("cs_key_otx") || ""
                             },
                             body: JSON.stringify({ indicator: target, type: "IPv4" })
+                        }).then(r => r.json()),
+                        fetch(`${BACKEND_URL}/check/phishing`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ url: `http://${target}` })
                         }).then(r => r.json())
                     ]);
 
@@ -2581,6 +2641,8 @@
                     } else {
                         otxInfo = `<span>${escapeHtml(otxRes.pulse_count)} Pulses / Score: ${escapeHtml(otxRes.threat_score)}</span>`;
                     }
+
+                    let phishingInfo = phishingRes.is_phishing ? `🔴 PHISHING DETECTED` : `🟢 Clean`;
 
                     let html = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -2594,12 +2656,12 @@
                                 </div>
                             </div>
                             <div>
-                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">ALIENVAULT RESEARCH</h4>
+                                <h4 class="font-display text-xs text-muted mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 6px; font-weight: bold; letter-spacing: 0.5px;">FEED DETAILS &amp; REPUTATION</h4>
                                 <div class="kv-grid text-xs">
-                                    <div class="kv-row"><span>Indicator Status</span><span>${otxInfo}</span></div>
+                                    <div class="kv-row"><span>AlienVault OTX</span><span>${otxInfo}</span></div>
+                                    <div class="kv-row"><span>PhishTank Status</span><span>${phishingInfo}</span></div>
                                     <div class="kv-row"><span>Malware Tags</span><span>${otxRes.tags ? otxRes.tags.slice(0, 4).join(', ') || 'None' : 'N/A'}</span></div>
                                     <div class="kv-row"><span>Adversaries</span><span>${otxRes.adversaries ? otxRes.adversaries.slice(0, 2).join(', ') || 'None' : 'N/A'}</span></div>
-                                    <div class="kv-row"><span>Target Country</span><span>${escapeHtml(otxRes.country || 'N/A')}</span></div>
                                 </div>
                             </div>
                         </div>
@@ -2690,10 +2752,20 @@
 
             // 5. Details stacked cards
             const detailsStack = document.querySelector(".details-stack");
-            // Clear existing dynamically generated panels
             const existingGeo = document.getElementById("results-geo-panel");
+            
+            let existingUrlMeta = document.getElementById("results-url-panel");
+            if (!existingUrlMeta) {
+                existingUrlMeta = document.createElement("div");
+                existingUrlMeta.id = "results-url-panel";
+                existingUrlMeta.className = "glass-panel details-panel";
+                existingUrlMeta.style.marginTop = "20px";
+                existingUrlMeta.style.textAlign = "left";
+            }
+            
             detailsStack.innerHTML = "";
             detailsStack.appendChild(existingGeo);
+            detailsStack.appendChild(existingUrlMeta);
 
             if (currentScanType === 'ip' && data.geo) {
                 existingGeo.style.display = "block";
@@ -2706,6 +2778,21 @@
                 `;
             } else {
                 existingGeo.style.display = "none";
+            }
+
+            if (currentScanType === 'url') {
+                existingUrlMeta.style.display = "block";
+                existingUrlMeta.innerHTML = `
+                    <h3 class="font-display text-sm mb-4" style="color: var(--primary);">🔍 DOMAIN INTEGRITY DETAILS</h3>
+                    <div class="kv-grid text-xs">
+                        <div class="kv-row"><span>Google Safe Browsing</span><span>${data.google_sb.safe ? '🟢 Clean / Harmless' : '🔴 THREAT MATCHED'}</span></div>
+                        <div class="kv-row"><span>Threat Categories</span><span>${data.google_sb.threats.length > 0 ? data.google_sb.threats.join(', ') : 'None detected'}</span></div>
+                        <div class="kv-row"><span>Target Domain</span><span>${escapeHtml(data.target)}</span></div>
+                        <div class="kv-row"><span>Scanner Status</span><span>🟢 Complete</span></div>
+                    </div>
+                `;
+            } else {
+                existingUrlMeta.style.display = "none";
             }
 
             // 6. Premium intelligence integration
