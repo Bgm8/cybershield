@@ -216,7 +216,31 @@ def verify_admin_token(authorization: str = Header(None)) -> str:
         return payload.get("sub")
     except JWTError:
         raise HTTPException(status_code=401, detail="Authentication token expired or corrupted.")
+def verify_premium_or_admin(authorization: str = Header(None)) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authentication token.")
+    token = authorization.split(" ")[1]
+    
+    # 1. Try to verify as Admin token
+    try:
+        payload = jwt.decode(token, ADMIN_JWT_SECRET, algorithms=["HS256"])
+        if payload.get("sub") == "admin":
+            return "admin"
+    except JWTError:
+        pass
+        
+    # 2. Try to verify as Supabase user token
+    if supabase_client:
+        try:
+            user_res = supabase_client.auth.get_user(token)
+            if user_res.user:
+                profile_res = supabase_client.table("profiles").select("tier").eq("id", user_res.user.id).single().execute()
+                if profile_res.data and profile_res.data.get("tier") in ("pro", "byok"):
+                    return user_res.user.id
+        except Exception:
+            pass
 
+    raise HTTPException(status_code=403, detail="Access denied: Premium subscription or Admin privileges required.")
 def sanitize_input(value: str) -> str:
     cleaned = value.strip()
     if len(cleaned) > 500:
@@ -778,7 +802,7 @@ async def scan_password(request: Request, req: PasswordRequest):
 # 5. WHOIS Lookup Route
 @app.post("/check/whois")
 @limiter.limit("10/minute")
-async def scan_whois(request: Request, req: WhoisRequest):
+async def scan_whois(request: Request, req: WhoisRequest, user: str = Depends(verify_premium_or_admin)):
     domain = sanitize_input(req.domain).replace("https://","").replace("http://","").split("/")[0]
     async with httpx.AsyncClient() as client:
         try:
@@ -825,7 +849,7 @@ async def scan_whois(request: Request, req: WhoisRequest):
 # 6. SSL Analyzer Route
 @app.post("/check/ssl")
 @limiter.limit("10/minute")
-async def scan_ssl(request: Request, req: SslRequest):
+async def scan_ssl(request: Request, req: SslRequest, user: str = Depends(verify_premium_or_admin)):
     domain = sanitize_input(req.domain).replace("https://","").replace("http://","").split("/")[0]
     async with httpx.AsyncClient() as client:
         res = await check_ssl_labs(domain, client)
@@ -834,7 +858,7 @@ async def scan_ssl(request: Request, req: SslRequest):
 # 7. DNS Resolve Route
 @app.post("/check/dns")
 @limiter.limit("10/minute")
-async def scan_dns(request: Request, req: DnsRequest):
+async def scan_dns(request: Request, req: DnsRequest, user: str = Depends(verify_premium_or_admin)):
     domain = sanitize_input(req.domain).replace("https://","").replace("http://","").split("/")[0]
     
     async def resolve_dns_record(name: str, record_type: str, client: httpx.AsyncClient) -> list:
@@ -877,7 +901,7 @@ async def scan_dns(request: Request, req: DnsRequest):
 # 8. Safe Screenshot Preview Route
 @app.post("/check/screenshot")
 @limiter.limit("10/minute")
-async def scan_screenshot(request: Request, req: ScreenshotRequest, x_user_urlscan_key: str = Header(None)):
+async def scan_screenshot(request: Request, req: ScreenshotRequest, x_user_urlscan_key: str = Header(None), user: str = Depends(verify_premium_or_admin)):
     url = sanitize_input(req.url)
     async with httpx.AsyncClient() as client:
         res = await fetch_urlscan_screenshot(url, x_user_urlscan_key, client)
@@ -886,7 +910,7 @@ async def scan_screenshot(request: Request, req: ScreenshotRequest, x_user_urlsc
 # 9. Blacklist Check (DNSBL)
 @app.post("/check/blacklist")
 @limiter.limit("10/minute")
-async def scan_blacklist(request: Request, req: BlacklistRequest):
+async def scan_blacklist(request: Request, req: BlacklistRequest, user: str = Depends(verify_premium_or_admin)):
     ip = sanitize_input(req.ip)
     
     # Validate IP Structure
@@ -977,7 +1001,7 @@ async def scan_hash(request: Request, req: HashRequest):
 # 11. AlienVault OTX Threat Pulses check
 @app.post("/check/otx")
 @limiter.limit("10/minute")
-async def scan_otx(request: Request, req: OtxRequest, x_user_otx_key: str = Header(None)):
+async def scan_otx(request: Request, req: OtxRequest, x_user_otx_key: str = Header(None), user: str = Depends(verify_premium_or_admin)):
     indicator = sanitize_input(req.indicator)
     ind_type = sanitize_input(req.type)
     key = x_user_otx_key or OTX_API_KEY
@@ -1030,7 +1054,7 @@ async def scan_otx(request: Request, req: OtxRequest, x_user_otx_key: str = Head
 # 12. PhishTank Check
 @app.post("/check/phishing")
 @limiter.limit("10/minute")
-async def scan_phishing(request: Request, req: PhishTankRequest, x_user_phishtank_key: str = Header(None)):
+async def scan_phishing(request: Request, req: PhishTankRequest, x_user_phishtank_key: str = Header(None), user: str = Depends(verify_premium_or_admin)):
     url = req.url
     if not (url.startswith("http://") or url.startswith("https://")):
         raise HTTPException(status_code=400, detail="Invalid URL: must start with http:// or https://")

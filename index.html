@@ -2518,6 +2518,7 @@
             detailsStack.appendChild(premPanel);
 
             const intelContent = premPanel.querySelector("#premium-intel-content");
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt") || (userSession ? userSession.access_token : "");
 
             try {
                 if (type === 'url') {
@@ -2525,23 +2526,33 @@
                     const [dnsRes, whoisRes, sslRes, phishingRes, screenshotRes] = await Promise.all([
                         fetch(`${BACKEND_URL}/check/dns`, {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`
+                            },
                             body: JSON.stringify({ domain })
                         }).then(r => r.json()),
                         fetch(`${BACKEND_URL}/check/whois`, {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`
+                            },
                             body: JSON.stringify({ domain })
                         }).then(r => r.json()),
                         fetch(`${BACKEND_URL}/check/ssl`, {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`
+                            },
                             body: JSON.stringify({ domain })
                         }).then(r => r.json()),
                         fetch(`${BACKEND_URL}/check/phishing`, {
                             method: "POST",
                             headers: { 
                                 "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`,
                                 "X-User-Phishtank-Key": localStorage.getItem("cs_key_phishtank") || ""
                             },
                             body: JSON.stringify({ url: target.startsWith('http') ? target : `http://${target}` })
@@ -2550,6 +2561,7 @@
                             method: "POST",
                             headers: { 
                                 "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`,
                                 "X-User-Urlscan-Key": localStorage.getItem("cs_key_urlscan") || ""
                             },
                             body: JSON.stringify({ url: target.startsWith('http') ? target : `http://${target}` })
@@ -2617,20 +2629,27 @@
                     const [blacklistRes, otxRes, phishingRes] = await Promise.all([
                         fetch(`${BACKEND_URL}/check/blacklist`, {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`
+                            },
                             body: JSON.stringify({ ip: target })
                         }).then(r => r.json()),
                         fetch(`${BACKEND_URL}/check/otx`, {
                             method: "POST",
                             headers: { 
                                 "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`,
                                 "X-User-OTX-Key": localStorage.getItem("cs_key_otx") || ""
                             },
                             body: JSON.stringify({ indicator: target, type: "IPv4" })
                         }).then(r => r.json()),
                         fetch(`${BACKEND_URL}/check/phishing`, {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`
+                            },
                             body: JSON.stringify({ url: `http://${target}` })
                         }).then(r => r.json())
                     ]);
