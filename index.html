@@ -1187,9 +1187,9 @@
                     <!-- Logged In controls -->
                     <div id="auth-logged-in" style="display: none; display: flex; align-items: center; gap: 8px;">
                         <span class="tier-badge tier-free" id="user-tier-badge">Free</span>
-                        <div class="avatar-circle font-mono" id="user-avatar" onclick="toggleDropdown()">U
+                        <div class="avatar-circle font-mono" id="user-avatar" onclick="toggleDropdown()"><span id="avatar-initial">U</span>
                             <div class="dropdown-menu" id="user-dropdown">
-                                <button class="dropdown-item" onclick="navigate('dashboard')">My Dashboard</button>
+                                <button class="dropdown-item" id="nav-dd-dashboard" onclick="navigate('dashboard')">My Dashboard</button>
                                 <button class="dropdown-item" onclick="navigate('byok')">Settings</button>
                                 <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 4px 0;">
                                 <button class="dropdown-item" onclick="handleLogout()" style="color: var(--danger);">Logout</button>
@@ -1970,7 +1970,6 @@
                     <ul class="footer-links">
                         <li><a href="#" onclick="openTermsModal('terms')">Terms of Service</a></li>
                         <li><a href="#" onclick="openTermsModal('privacy')">Privacy Policy</a></li>
-                        <li><a href="https://github.com/Bgm8/cybershield" target="_blank" rel="noopener noreferrer">GitHub Code ↗</a></li>
                     </ul>
                 </div>
                 <div style="text-align: left;">
@@ -2256,17 +2255,37 @@
         function updateAuthUi(loggedIn) {
             const loggedOutGroup = document.getElementById("auth-logged-out");
             const loggedInGroup = document.getElementById("auth-logged-in");
-            const userAvatar = document.getElementById("user-avatar");
+            const avatarInitial = document.getElementById("avatar-initial");
             const tierBadge = document.getElementById("user-tier-badge");
+            const ddDashboard = document.getElementById("nav-dd-dashboard");
 
-            if (loggedIn && userSession) {
+            const isAdminActive = !!sessionStorage.getItem("cs_admin_jwt");
+
+            if (isAdminActive) {
                 loggedOutGroup.style.display = "none";
                 loggedInGroup.style.display = "flex";
-                userAvatar.textContent = userSession.user.email[0].toUpperCase();
+                if (avatarInitial) avatarInitial.textContent = "A";
+                
+                tierBadge.textContent = "admin";
+                tierBadge.className = "tier-badge tier-byok";
+                
+                if (ddDashboard) {
+                    ddDashboard.textContent = "Admin Console";
+                    ddDashboard.setAttribute("onclick", "navigate('admin')");
+                }
+            } else if (loggedIn && userSession) {
+                loggedOutGroup.style.display = "none";
+                loggedInGroup.style.display = "flex";
+                if (avatarInitial) avatarInitial.textContent = userSession.user.email[0].toUpperCase();
                 
                 const tier = userProfile ? userProfile.tier : "free";
                 tierBadge.textContent = tier;
                 tierBadge.className = `tier-badge tier-${tier}`;
+
+                if (ddDashboard) {
+                    ddDashboard.textContent = "My Dashboard";
+                    ddDashboard.setAttribute("onclick", "navigate('dashboard')");
+                }
             } else {
                 loggedOutGroup.style.display = "block";
                 loggedInGroup.style.display = "none";
@@ -2353,8 +2372,14 @@
         }
 
         async function handleLogout() {
-            if (!supabase) return;
-            await supabase.auth.signOut();
+            if (sessionStorage.getItem("cs_admin_jwt")) {
+                exitAdmin();
+            }
+            if (supabase) {
+                try {
+                    await supabase.auth.signOut();
+                } catch (e) {}
+            }
             userSession = null;
             userProfile = null;
             updateAuthUi(false);
@@ -3261,6 +3286,8 @@
                 if (activeAdminTab === 'stats') loadAdminStats();
                 else if (activeAdminTab === 'activity') loadAdminActivity();
             }, 10000);
+
+            updateAuthUi(true);
         }
 
         function exitAdmin() {
@@ -3275,6 +3302,7 @@
             if (window.location.hash === "#admin") {
                 window.location.hash = "";
             }
+            updateAuthUi(false);
             navigate('scanner');
         }
 
