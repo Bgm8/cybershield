@@ -1214,7 +1214,7 @@
                     91+ security engines. Real-time intelligence. Zero guesswork. Protect yourself before attackers strike.
                 </p>
                 <div style="display: flex; gap: 14px; justify-content: center; margin-bottom: 40px; flex-wrap: wrap;">
-                    <button class="primary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="startScanningFreeTrial()">Start Scanning Free →</button>
+                    <button class="primary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="startScanningFree()">Start Scanning Free →</button>
                     <button class="secondary-btn font-display" style="padding: 12px 28px; font-size: 0.9rem;" onclick="navigate('about')">View Platform Details</button>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 20px;">
@@ -1539,7 +1539,7 @@
                             <li><span>❌</span> No historic dashboard logs</li>
                             <li><span>❌</span> Personal API key integration</li>
                         </ul>
-                        <button class="secondary-btn font-mono" onclick="startScanningFreeTrial()">Start Scanning</button>
+                        <button class="secondary-btn font-mono" onclick="startScanningFree()">Start Scanning</button>
                     </div>
 
                     <!-- PRO -->
@@ -2195,14 +2195,15 @@
             }
         }
 
-        function startScanningFreeTrial() {
-            if (!userProfile) {
-                userProfile = { tier: 'pro' };
-            } else {
-                userProfile.tier = 'pro';
-            }
-            updateAuthUi(false);
+        function startScanningFree() {
             navigate('scanner');
+            const scanInput = document.getElementById("scan-target");
+            if (scanInput) {
+                setTimeout(() => {
+                    scanInput.focus();
+                    scanInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
         }
 
         // ── NAVIGATION CONTROLLER ────────────────────────────────────────────
