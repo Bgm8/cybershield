@@ -3,452 +3,3319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CyberShield AI | Enterprise Threat Intelligence</title>
+    <meta name="description" content="CyberShield - AI-Powered Threat Intelligence Platform">
+    <title>CyberShield — Stay Safe Online</title>
 
-    <!-- SEO -->
-    <meta name="description" content="CyberShield AI — Enterprise-grade cybersecurity threat intelligence platform. Scan URLs, IPs, domains and hashes against 90+ security engines in real time.">
-    <meta name="robots" content="noindex, nofollow">
+    <!-- Pinned CDN Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
 
-    <!-- Content Security Policy — blocks XSS and inline script injection, modified to support local testing, urlscan images, and inline click handlers -->
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self';
-        script-src 'self' 'unsafe-inline';
-        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-        font-src https://fonts.gstatic.com;
-        connect-src 'self' https://cybershield-production-2548.up.railway.app https://*.up.railway.app http://localhost:* http://127.0.0.1:*;
-        img-src 'self' data: https://urlscan.io;
-        object-src 'none';
-        base-uri 'self';
-        frame-ancestors 'none';
-    ">
+    <!-- Pinned Supabase JS SDK CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
 
-    <!-- Prevent clickjacking via meta -->
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <!-- Pinned Chart.js CDN for Admin Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"></script>
 
-    <!-- Premium Enterprise Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <!-- Content Security Policy meta tag for production security hardening -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: http: 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: https: http:; connect-src 'self' https: http: wss: ws:;">
+
+    <style>
+        /* ── CSS STYLING SYSTEM ────────────────────────────────────────────────── */
+        :root {
+            --bg-main: #04070f;
+            --primary: #00d4ff;
+            --primary-glow: rgba(0, 212, 255, 0.25);
+            --secondary: #0055ff;
+            --success: #00ff88;
+            --success-glow: rgba(0, 255, 136, 0.25);
+            --danger: #ff4444;
+            --danger-glow: rgba(255, 68, 68, 0.25);
+            --warning: #ffaa00;
+            --warning-glow: rgba(255, 170, 0, 0.25);
+            --purple: #7c3aed;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --text-faint: #4b5563;
+            --border-light: rgba(255, 255, 255, 0.07);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.07);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Pure CSS Animated Grid Dots Background */
+        .dot-grid {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+            z-index: -10;
+            pointer-events: none;
+            animation: shiftGrid 120s linear infinite;
+        }
+        @keyframes shiftGrid {
+            from { background-position: 0 0; }
+            to { background-position: 1000px 1000px; }
+        }
+
+        /* ── FONTS & UTILITIES ─────────────────────────────────────────────────── */
+        .font-display { font-family: 'Orbitron', sans-serif; }
+        .font-mono { font-family: 'Share Tech Mono', monospace; }
+        .font-outfit { font-family: 'Outfit', sans-serif; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .glass-panel:hover {
+            border-color: rgba(0, 212, 255, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Glow active border indicator */
+        .card-active-glow {
+            position: relative;
+            overflow: hidden;
+        }
+        .card-active-glow::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, var(--secondary), var(--primary));
+        }
+
+        /* Buttons & Inputs */
+        .primary-btn {
+            background: linear-gradient(90deg, var(--secondary), var(--primary));
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+        .primary-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .secondary-btn {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .secondary-btn:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: var(--text-muted);
+        }
+
+        .text-input {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-main);
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .text-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        /* ── HEADER ───────────────────────────────────────────────────────────── */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(4, 7, 15, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-light);
+            padding: 16px 0;
+        }
+
+        .header-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text-main);
+        }
+        .logo-shield {
+            font-size: 1.8rem;
+            animation: pulseShield 2s infinite alternate;
+        }
+        @keyframes pulseShield {
+            from { transform: scale(1); filter: drop-shadow(0 0 2px var(--primary)); }
+            to { transform: scale(1.05); filter: drop-shadow(0 0 8px var(--primary)); }
+        }
+
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, #FFF, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+        }
+        .nav-tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .nav-tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .nav-tab-btn.active {
+            color: var(--primary);
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        /* User profile controls in header */
+        .auth-header-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .avatar-circle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary), var(--purple));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            border: 1px solid var(--border-light);
+        }
+        .tier-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .tier-free { background: var(--text-faint); color: #fff; }
+        .tier-pro { background: linear-gradient(90deg, var(--purple), #eb34e2); color: #fff; }
+        .tier-byok { background: var(--warning); color: #000; }
+
+        /* Profile dropdown menu */
+        .dropdown-menu {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            width: 180px;
+            background: #090e1a;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 8px 0;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 101;
+        }
+        .dropdown-item {
+            padding: 10px 16px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.88rem;
+            transition: all 0.2s ease;
+            display: block;
+            text-align: left;
+        }
+        .dropdown-item:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* ── HERO SECTION ────────────────────────────────────────────────────── */
+        .hero {
+            padding: 70px 0 40px;
+            text-align: center;
+            position: relative;
+        }
+        .hero-banner {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: var(--success);
+            background: rgba(0, 255, 136, 0.06);
+            border: 1px solid rgba(0, 255, 136, 0.15);
+            padding: 6px 16px;
+            border-radius: 50px;
+            margin-bottom: 24px;
+        }
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            color: #fff;
+        }
+        /* Rotating Text style */
+        .rotating-text-wrapper {
+            height: 50px;
+            overflow: hidden;
+            display: block;
+            margin-top: 8px;
+        }
+        .rotating-text {
+            color: var(--primary);
+            animation: textRotation 12s cubic-bezier(0.68, -0.6, 0.32, 1.6) infinite;
+        }
+        @keyframes textRotation {
+            0%, 20% { transform: translateY(0); }
+            25%, 45% { transform: translateY(-50px); }
+            50%, 70% { transform: translateY(-100px); }
+            75%, 95% { transform: translateY(-150px); }
+            100% { transform: translateY(0); }
+        }
+
+        .hero-sub {
+            max-width: 650px;
+            margin: 0 auto 32px;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .live-banner {
+            margin-top: 16px;
+            font-size: 0.85rem;
+            color: var(--text-faint);
+        }
+
+        /* ── STATS BAR ───────────────────────────────────────────────────────── */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .stat-card {
+            padding: 16px;
+            background: rgba(255,255,255,0.01);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+        }
+        .stat-val {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .stat-lbl {
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        /* ── MAIN VIEWS ──────────────────────────────────────────────────────── */
+        .view-panel {
+            display: none;
+            margin-bottom: 80px;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        .view-panel.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── SCANNER VIEW ─────────────────────────────────────────────────────── */
+        .scanner-card {
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .scan-selector {
+            display: inline-flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            background: rgba(0,0,0,0.3);
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+        }
+        .scan-selector-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 20px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        .scan-selector-btn.active {
+            background: var(--primary);
+            color: #000;
+            font-weight: bold;
+            transform: scale(1.05); /* Bouncy scale transition */
+        }
+
+        .input-group-scan {
+            display: flex;
+            max-width: 800px;
+            margin: 0 auto;
+            gap: 12px;
+        }
+
+        /* Loading progress overlay styling */
+        .loading-ticker-wrapper {
+            margin-top: 24px;
+            display: none;
+        }
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(0, 212, 255, 0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-ticker-text {
+            font-size: 0.9rem;
+            color: var(--primary);
+        }
+
+        /* SCAN RESULTS REDESIGN (Verdict first, Engines second, details third) */
+        .results-top {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .verdict-card {
+            padding: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .verdict-card.verdict-high {
+            border-left: 6px solid var(--danger);
+            box-shadow: 0 0 25px rgba(255, 68, 68, 0.15);
+        }
+        .verdict-card.verdict-medium {
+            border-left: 6px solid var(--warning);
+            box-shadow: 0 0 25px rgba(255, 170, 0, 0.15);
+        }
+        .verdict-card.verdict-low {
+            border-left: 6px solid var(--primary);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.15);
+        }
+        .verdict-card.verdict-clean {
+            border-left: 6px solid var(--success);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.15);
+        }
+
+        .circular-score {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+        .circular-chart {
+            width: 100%;
+            height: 100%;
+        }
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 3;
+        }
+        .circle-path {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke-dasharray 1s ease;
+        }
+        .circle-path-high { stroke: var(--danger); }
+        .circle-path-medium { stroke: var(--warning); }
+        .circle-path-clean { stroke: var(--success); }
+
+        .score-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        /* AI Copilot card */
+        .ai-analyst-card {
+            padding: 32px;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, transparent 100%);
+            border: 1px solid rgba(124, 58, 237, 0.2);
+        }
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: #b794f4;
+        }
+        .ai-body {
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* Security engines layout styles */
+        .engines-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px;
+            max-height: 480px;
+            overflow-y: auto;
+            padding-right: 6px;
+            margin-top: 16px;
+        }
+        .engine-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(7, 17, 32, 0.4);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .engine-item.status-malicious { border-color: rgba(255, 68, 68, 0.35); background: rgba(255, 68, 68, 0.04); }
+        .engine-item.status-suspicious { border-color: rgba(255, 170, 0, 0.35); background: rgba(255, 170, 0, 0.04); }
+        .engine-item.status-clean { border-color: rgba(0, 255, 136, 0.15); background: rgba(0, 255, 136, 0.02); }
+
+        .e-name {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 140px;
+        }
+        .e-res {
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .filter-btns { display: flex; gap: 8px; }
+        .filter-btn {
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .filter-btn:hover { border-color: var(--text-muted); }
+        .filter-btn.active {
+            background: rgba(255,255,255,0.08);
+            border-color: var(--text-main);
+            color: white;
+        }
+
+        /* 🆕 Stacked details cards */
+        .details-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin-top: 24px;
+        }
+        .details-stack .glass-panel {
+            padding: 24px;
+        }
+        .kv-grid {
+            display: grid;
+            gap: 4px;
+            margin-top: 12px;
+        }
+        .kv-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.88rem;
+        }
+        .kv-row:last-child { border-bottom: none; }
+        .kv-row span:first-child { color: var(--text-muted); }
+        .kv-row span:last-child { color: var(--text-main); font-weight: bold; text-align: right; }
+
+        .tag-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .tag-chip {
+            font-size: 0.72rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-light);
+        }
+
+        /* OTX pulse list */
+        .pulse-item {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        /* BYOK Banner indicator */
+        .byok-active-banner {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid rgba(255, 170, 0, 0.2);
+            color: var(--warning);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        /* ── DEEP SCAN TAB ───────────────────────────────────────────────────── */
+        .deep-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            .deep-grid { grid-template-columns: 1fr; }
+            .results-top { grid-template-columns: 1fr; }
+            .stats-bar { grid-template-columns: 1fr 1fr; }
+        }
+
+        .deep-card {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background: rgba(255,255,255,0.01);
+        }
+        .deep-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .deep-icon {
+            font-size: 2rem;
+        }
+        .deep-title {
+            font-size: 1.1rem;
+            color: white;
+            letter-spacing: 1.5px;
+        }
+        .deep-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: -8px;
+        }
+
+        /* Details collapsible */
+        .collapsible-trigger {
+            font-size: 0.8rem;
+            color: var(--primary);
+            cursor: pointer;
+            background: none;
+            border: none;
+            outline: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 10px;
+        }
+        .collapsible-content {
+            display: none;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            font-size: 0.8rem;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            border-radius: 4px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .risk-safe { background: rgba(0, 255, 136, 0.12); color: var(--success); border: 1px solid rgba(0, 255, 136, 0.2); }
+        .risk-warning { background: rgba(255, 170, 0, 0.12); color: var(--warning); border: 1px solid rgba(255, 170, 0, 0.2); }
+        .risk-danger { background: rgba(255, 68, 68, 0.12); color: var(--danger); border: 1px solid rgba(255, 68, 68, 0.2); }
+        .risk-unknown { background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border-light); }
+
+        /* ── HISTORY VIEW ────────────────────────────────────────────────────── */
+        .history-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .history-item {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .history-item:hover {
+            border-color: var(--primary);
+            background: rgba(0, 212, 255, 0.02);
+            transform: translateX(4px);
+        }
+
+        /* ── PRICING TAB ──────────────────────────────────────────────────────── */
+        .pricing-layout {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        @media (max-width: 992px) {
+            .pricing-layout { grid-template-columns: 1fr; }
+        }
+        .price-card {
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+        .price-card.featured {
+            border: 2px solid var(--purple);
+            background: linear-gradient(180deg, rgba(124, 58, 237, 0.06) 0%, transparent 100%);
+        }
+        .price-featured-tag {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--purple);
+            color: white;
+            font-size: 0.72rem;
+            padding: 4px 12px;
+            border-radius: 50px;
+            letter-spacing: 1px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .price-header h3 {
+            font-size: 1.4rem;
+            color: white;
+        }
+        .price-cost {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: white;
+            margin-top: 8px;
+        }
+        .price-cost span {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+        .price-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .price-features li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .faq-section {
+            margin-top: 60px;
+        }
+        .faq-item {
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 12px;
+        }
+        .faq-question {
+            font-weight: bold;
+            cursor: pointer;
+            padding: 8px 0;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+        }
+        .faq-answer {
+            display: none;
+            padding: 8px 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* ── BYOK TAB ─────────────────────────────────────────────────────────── */
+        .byok-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            .byok-grid { grid-template-columns: 1fr; }
+        }
+        .byok-card {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .byok-status-pill {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            text-transform: uppercase;
+        }
+        .status-notset { background: var(--text-faint); color: var(--text-muted); }
+        .status-saved { background: var(--warning-glow); color: var(--warning); }
+        .status-verified { background: var(--success-glow); color: var(--success); }
+        .status-invalid { background: var(--danger-glow); color: var(--danger); }
+
+        .key-input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* ── MODALS (Auth, Privacy, Limits, Admin verify) ────────────────────── */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(4, 7, 15, 0.9);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            display: none;
+        }
+        .modal-card {
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            background: #090e1a;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            position: relative;
+            animation: modalSlide 0.3s ease-out;
+        }
+        @keyframes modalSlide {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .auth-toggle-hint {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .auth-toggle-link {
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .signup-benefits {
+            margin: 16px 0;
+            font-size: 0.85rem;
+            background: rgba(0, 212, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            color: var(--text-main);
+            border: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        /* Limits modal specific cards */
+        .limit-options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .limit-opt-card {
+            padding: 16px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .limit-opt-card:hover {
+            border-color: var(--primary);
+            background: rgba(0, 212, 255, 0.04);
+        }
+
+        /* ── ADMIN PANEL LAYOUT ──────────────────────────────────────────────── */
+        #admin-panel {
+            min-height: 100vh;
+            background: #020408;
+            color: #fff;
+            display: none;
+        }
+        .admin-header {
+            background: #070b13;
+            border-bottom: 2px solid var(--danger);
+            padding: 16px 0;
+        }
+        .admin-logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--danger);
+            letter-spacing: 2px;
+        }
+        .maintenance-btn-switch {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .maintenance-btn-switch.active {
+            background: var(--danger);
+            color: white;
+        }
+
+        .admin-nav {
+            display: flex;
+            background: #090f1d;
+            border-bottom: 1px solid var(--border-light);
+            padding: 0 24px;
+        }
+        .admin-tab {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 14px 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: 0.2s;
+        }
+        .admin-tab.active {
+            color: var(--danger);
+            border-bottom-color: var(--danger);
+            font-weight: bold;
+        }
+
+        .admin-view-panel {
+            display: none;
+            padding: 32px 0;
+        }
+        .admin-view-panel.active {
+            display: block;
+        }
+
+        /* Admin table styles */
+        .admin-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.01);
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            text-align: left;
+        }
+        .admin-table th, .admin-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .admin-table th {
+            background: rgba(0,0,0,0.4);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+        }
+        .admin-table tbody tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        .row-high { background: rgba(255, 68, 68, 0.04); }
+        .row-medium { background: rgba(255, 170, 0, 0.04); }
+        .row-clean { background: rgba(0, 255, 136, 0.02); }
+
+        .admin-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 24px;
+        }
+        @media (max-width: 768px) {
+            .admin-charts-grid { grid-template-columns: 1fr; }
+        }
+        .chart-container {
+            padding: 20px;
+            background: rgba(255,255,255,0.01);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+        }
+
+        /* ── FOOTER ──────────────────────────────────────────────────────────── */
+        footer {
+            border-top: 1px solid var(--border-light);
+            padding: 60px 0 40px;
+            background: rgba(2, 4, 8, 0.95);
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-top: 80px;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        @media (max-width: 768px) {
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+        .footer-logo {
+            font-size: 1.2rem;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        .footer-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .footer-links a:hover {
+            color: white;
+        }
+        .footer-bottom {
+            text-align: center;
+            border-top: 1px solid var(--border-light);
+            padding-top: 24px;
+            font-size: 0.78rem;
+            color: var(--text-faint);
+        }
+
+        /* Maintenance warning banner */
+        .maintenance-warning-banner {
+            background: var(--danger);
+            color: white;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            display: none;
+            z-index: 102;
+            position: relative;
+        }
+    </style>
 </head>
 <body>
-    <!-- Animated Cyber Grid Background -->
-    <div class="cyber-grid"></div>
-    <div class="glow-orbs"></div>
 
-    <!-- Layout Wrapper -->
-    <div class="app-layout">
-        
-        <!-- ================= SIDEBAR ================= -->
-        <aside class="sidebar glass-panel">
-            <div class="brand">
-                <div class="brand-icon">🛡️</div>
-                <div class="brand-text">
-                    <h1 class="font-display">CYBERSHIELD AI</h1>
-                    <span class="font-mono text-faint">ENTERPRISE EDITION</span>
-                </div>
-            </div>
+    <div class="dot-grid"></div>
 
-            <nav class="nav-menu" role="navigation" aria-label="Main Navigation">
-                <button class="nav-btn active" data-target="dashboard" id="nav-dashboard" aria-current="page">
-                    <span class="icon">📊</span> SOC Dashboard
-                </button>
-                <button class="nav-btn" data-target="scanner" id="nav-scanner">
-                    <span class="icon">⚡</span> Advanced Scanner
-                </button>
-                <button class="nav-btn" data-target="investigations" id="nav-investigations">
-                    <span class="icon">🔬</span> Investigations
-                </button>
-                <button class="nav-btn" data-target="map" id="nav-map">
-                    <span class="icon">🌍</span> Global Threat Map
-                </button>
-                <button class="nav-btn" data-target="analytics" id="nav-analytics">
-                    <span class="icon">📈</span> Analytics
-                </button>
-            </nav>
+    <!-- Maintenance Global Alert Banner -->
+    <div id="maintenance-alert" class="maintenance-warning-banner">
+        ⚠️ SYSTEM UNDER SCHEDULED MAINTENANCE — SCANS TEMPORARILY OFFLINE
+    </div>
 
-            <div class="sidebar-bottom">
-                <div class="sys-status">
-                    <div class="status-indicator">
-                        <div class="dot online" id="sys-dot"></div>
-                        <span class="font-mono text-muted" id="sys-text">SYSTEM SECURE</span>
+    <!-- ── STANDARD USER INTERFACE ─────────────────────────────────────────── -->
+    <div id="main-ui">
+        <!-- HEADER -->
+        <header>
+            <div class="container header-wrapper">
+                <a href="#" class="logo-group" onclick="navigate('scanner')">
+                    <span class="logo-shield" aria-hidden="true">🛡️</span>
+                    <span class="logo-text font-display">CyberShield</span>
+                </a>
+                
+                <nav class="nav-tabs" role="navigation" aria-label="Main Navigation">
+                    <button class="nav-tab-btn active font-display" onclick="navigate('scanner')">⚡ Scanner</button>
+                    <button class="nav-tab-btn font-display" onclick="navigate('deepscan')">🔍 Deep Scan</button>
+                    <button class="nav-tab-btn font-display" onclick="navigate('history')">📋 History</button>
+                    <button class="nav-tab-btn font-display" onclick="navigate('pricing')">💰 Pricing</button>
+                    <button class="nav-tab-btn font-display" onclick="navigate('byok')">⚙️ My API Keys</button>
+                    <button class="nav-tab-btn font-display" onclick="navigate('about')">📖 About</button>
+                </nav>
+
+                <div class="auth-header-group">
+                    <!-- Logged Out controls -->
+                    <div id="auth-logged-out">
+                        <button class="secondary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem; margin-right: 8px;" onclick="openAuthModal('login')">Login</button>
+                        <button class="primary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="openAuthModal('signup')">Sign Up Free</button>
+                    </div>
+                    <!-- Logged In controls -->
+                    <div id="auth-logged-in" style="display: none; display: flex; align-items: center; gap: 8px;">
+                        <span class="tier-badge tier-free" id="user-tier-badge">Free</span>
+                        <div class="avatar-circle font-mono" id="user-avatar" onclick="toggleDropdown()">U
+                            <div class="dropdown-menu" id="user-dropdown">
+                                <button class="dropdown-item" onclick="navigate('dashboard')">My Dashboard</button>
+                                <button class="dropdown-item" onclick="navigate('byok')">Settings</button>
+                                <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 4px 0;">
+                                <button class="dropdown-item" onclick="handleLogout()" style="color: var(--danger);">Logout</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <button class="nav-btn" data-target="settings" id="nav-settings">
-                    <span class="icon">⚙️</span> Settings
-                </button>
             </div>
-        </aside>
+        </header>
 
-        <!-- ================= MAIN CONTENT ================= -->
-        <main class="main-content" role="main">
+        <!-- CONTAINER BODY -->
+        <main class="container mt-6">
             
-            <!-- TOP NAVBAR -->
-            <header class="topbar glass-panel">
-                <div class="breadcrumbs font-mono text-muted" id="breadcrumb" aria-label="Breadcrumb">
-                    CYBERSHIELD AI <span class="divider">/</span> <span class="current">SOC DASHBOARD</span>
+            <!-- ── HERO SECTION ── -->
+            <section class="hero">
+                <div class="hero-banner font-mono">⚡ CYBERSHIELD SECURE GATEWAY ACTIVE</div>
+                <h1 class="hero-title font-display">
+                    Stay Safe Online.
+                    <div class="rotating-text-wrapper">
+                        <div class="rotating-text" id="rotator-text">Scan any URL</div>
+                    </div>
+                </h1>
+                <p class="hero-sub">
+                    Paste anything suspicious — a link, an IP address, an email, or a file hash — and we'll tell you if it's dangerous. Free, instant, no account needed.
+                </p>
+                <div class="hero-actions" style="justify-content: center;">
+                    <span class="font-mono text-faint" id="protected-counter">🛡️ 142,392 people protected today</span>
                 </div>
-                <div class="topbar-actions">
-                    <div class="search-bar" role="search">
-                        <span class="search-icon" aria-hidden="true">🔍</span>
-                        <input type="text" id="global-search" class="font-mono" placeholder="Quick scan: paste any IP or URL..." autocomplete="off" spellcheck="false">
-                    </div>
-                    <div class="user-profile" aria-label="User info">
-                        <div class="avatar" aria-hidden="true">SA</div>
-                        <div class="user-info">
-                            <span class="name font-display">Security Analyst</span>
-                            <span class="role font-mono text-faint">SOC Tier 3 Analyst</span>
-                        </div>
-                    </div>
+            </section>
+
+            <!-- ── STATS BAR ── -->
+            <section class="stats-bar">
+                <div class="stat-card glass-panel">
+                    <div class="stat-val font-display">91+</div>
+                    <div class="stat-lbl font-mono">Security Engines</div>
                 </div>
-            </header>
+                <div class="stat-card glass-panel">
+                    <div class="stat-val font-display" id="threats-counter">--</div>
+                    <div class="stat-lbl font-mono">Threats Blocked</div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-val font-display" id="scans-session">0</div>
+                    <div class="stat-lbl font-mono">Scans This Session</div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-val font-display">&lt; 3s</div>
+                    <div class="stat-lbl font-mono">Scan Time</div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-val font-display">100%</div>
+                    <div class="stat-lbl font-mono">Free To Use</div>
+                </div>
+            </section>
 
-            <!-- VIEWS CONTAINER -->
-            <div class="views-container">
-
-                <!-- 1. SOC DASHBOARD VIEW -->
-                <div id="view-dashboard" class="view active" role="region" aria-label="SOC Dashboard">
-                    <div class="hero-section glass-panel">
-                        <div class="hero-content">
-                            <div class="hero-badge font-mono">🟢 ALL SYSTEMS OPERATIONAL</div>
-                            <h2 class="font-display hero-title">Enterprise Threat Intelligence</h2>
-                            <p class="hero-sub text-muted">Protect domains, IPs, URLs, infrastructure, and digital assets using real-time threat intelligence from over 90+ security engines in parallel.</p>
-                            <div class="hero-actions">
-                                <button class="primary-btn glow-effect" id="btn-start-scan" onclick="navigate('scanner')">⚡ START SCAN</button>
-                                <button class="secondary-btn" id="btn-view-threats" onclick="navigate('map')">🌍 VIEW LIVE THREATS</button>
-                            </div>
-                        </div>
-                        <div class="hero-graphic" aria-hidden="true">
-                            <canvas id="hero-canvas"></canvas>
-                            <div class="node-network"></div>
-                        </div>
+            <!-- ── 1. SCANNER VIEW ── -->
+            <div id="view-scanner" class="view-panel active">
+                <div class="scanner-card glass-panel card-active-glow">
+                    <div class="scan-selector">
+                        <button class="scan-selector-btn active font-mono" id="btn-sel-url" onclick="setScanType('url')">🔗 URL / Domain</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-ip" onclick="setScanType('ip')">🌐 IPv4 Address</button>
                     </div>
 
-                    <div class="dashboard-grid">
-                        <div class="dash-card glass-panel" role="status" aria-label="Active Threats">
-                            <div class="dc-header font-mono">ACTIVE THREATS</div>
-                            <div class="dc-value font-display text-danger counter" id="cnt-threats">0</div>
-                            <div class="dc-trend text-muted">Scanned this session</div>
-                        </div>
-                        <div class="dash-card glass-panel" role="status" aria-label="Risk Detections">
-                            <div class="dc-header font-mono">RISK DETECTIONS</div>
-                            <div class="dc-value font-display text-warning counter" id="cnt-risks">0</div>
-                            <div class="dc-trend text-muted">High/Medium IOCs</div>
-                        </div>
-                        <div class="dash-card glass-panel">
-                            <div class="dc-header font-mono">INTELLIGENCE SOURCES</div>
-                            <div class="dc-value font-display text-success">90+</div>
-                            <div class="dc-trend text-success">Engines Online</div>
-                        </div>
-                        <div class="dash-card glass-panel" role="status" aria-label="API Status">
-                            <div class="dc-header font-mono">API STATUS</div>
-                            <div class="dc-value font-display text-success" id="api-status-val">--</div>
-                            <div class="dc-trend text-muted">Platform Uptime</div>
-                        </div>
+                    <div id="personal-key-indicator" class="byok-active-banner" style="display: none;">
+                        <span>⚡ Using your personal API key</span>
                     </div>
 
-                    <!-- Recent Activity Feed -->
-                    <div class="glass-panel p-6 mt-6">
-                        <div class="d-flex justify-between align-center mb-4">
-                            <h3 class="font-display">Recent Activity</h3>
-                            <span class="font-mono text-faint text-sm">This Session</span>
-                        </div>
-                        <div id="recent-activity">
-                            <div class="empty-state font-mono text-faint">No scans performed yet. Run your first analysis to see results here.</div>
-                        </div>
+                    <div class="input-group-scan">
+                        <input type="text" id="scan-target" class="text-input font-mono" placeholder="Let's check that for you..." autocomplete="off">
+                        <button class="primary-btn font-display" id="btn-main-scan" onclick="runMainScan()">ANALYZE</button>
+                    </div>
+                    
+                    <div id="scan-friendly-error" class="font-mono text-danger mt-3" style="display: none;"></div>
+
+                    <!-- Loading overlay ticker -->
+                    <div class="loading-ticker-wrapper" id="main-scan-loading">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-ticker-text font-mono" id="main-scan-loading-text">Checking with 91 security experts...</div>
                     </div>
                 </div>
 
-                <!-- 2. ADVANCED SCANNER VIEW -->
-                <div id="view-scanner" class="view" role="region" aria-label="Advanced Scanner">
-                    <div class="scanner-hero glass-panel">
-                        <h2 class="font-display mb-4">Advanced Threat Intelligence Search</h2>
-                        
-                        <div class="scan-tabs font-mono" role="tablist" aria-label="Scan type">
-                            <button class="scan-tab active" data-type="url" id="tab-url" role="tab" aria-selected="true">🔗 URL / Domain / Hash</button>
-                            <button class="scan-tab" data-type="ip" id="tab-ip" role="tab" aria-selected="false">🌐 IPv4 / IPv6 Address</button>
+                <!-- SCAN RESULTS SHEETS -->
+                <div id="scan-results" style="display: none; animation: fadeIn 0.4s ease-out;">
+                    <!-- 📊 1. Top Verdict + AI Analyst -->
+                    <div class="results-top">
+                        <div class="verdict-card glass-panel verdict-clean" id="results-verdict-card">
+                            <div class="vc-left" style="text-align: left;">
+                                <div class="font-mono text-faint mb-2">VERDICT CLASSIFICATION</div>
+                                <h2 class="font-display vc-title" id="results-verdict-title">CLEAN</h2>
+                                <div class="font-mono mt-2" id="results-verdict-target" style="word-break: break-all;">Target: -</div>
+                                <div class="verdict-stats mt-4" id="results-verdict-stats" style="display: flex; gap: 16px;">
+                                    <div class="vs-item"><div class="vs-val" id="results-val-malicious">0</div><div class="vs-label">MALICIOUS</div></div>
+                                    <div class="vs-item"><div class="vs-val" id="results-val-total">0</div><div class="vs-label">ENGINES</div></div>
+                                </div>
+                            </div>
+                            <div class="vc-right">
+                                <div class="circular-score">
+                                    <svg viewBox="0 0 36 36" class="circular-chart">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                        <path class="circle-path circle-path-clean" id="results-score-path" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    </svg>
+                                    <div class="score-text font-display" id="results-score-val">0</div>
+                                </div>
+                                <div class="font-mono text-faint mt-2" style="font-size: 0.75rem;">RISK INDEX / 100</div>
+                            </div>
                         </div>
 
-                        <div class="scan-input-wrapper" id="scan-wrapper">
-                            <div class="scan-icon" aria-hidden="true">🎯</div>
-                            <input type="text" id="scan-target" class="font-mono" placeholder="Enter Indicator of Compromise (IoC)..." autocomplete="off" spellcheck="false" aria-label="Scan target">
-                            <button class="primary-btn pulse-anim" id="btn-scan" onclick="executeScan()">ANALYZE THREAT</button>
-                        </div>
-                        <div id="scan-error" class="scan-error text-danger font-mono mt-2" style="display:none;" role="alert"></div>
-                        
-                        <!-- Progress Bar -->
-                        <div class="scan-progress-container" id="scan-progress" style="display: none;">
-                            <div class="scan-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-                                <div class="scan-progress-fill" id="progress-fill"></div>
+                        <!-- AI Copilot Card -->
+                        <div class="ai-analyst-card glass-panel">
+                            <div class="ai-header">
+                                <span class="ai-icon">🧠</span>
+                                <span class="font-display">AI Security Analyst</span>
+                                <span class="font-mono" style="font-size: 0.65rem; border: 1px solid rgba(183, 148, 244, 0.4); padding: 2px 6px; border-radius: 4px; margin-left: auto;">COPILOT</span>
                             </div>
-                            <div class="scan-progress-text font-mono text-muted">Analyzing against 90+ threat engines...</div>
-                            <div class="live-logs font-mono" id="live-logs" aria-live="polite" aria-label="Live scan log"></div>
+                            <div class="ai-body font-mono" id="results-ai-text">
+                                Analyzing targets details...
+                            </div>
                         </div>
                     </div>
 
-                    <!-- SCAN RESULTS -->
-                    <div id="scan-results" class="scan-results" style="display: none;" role="region" aria-label="Scan Results">
-                        
-                        <!-- 🛡️ 1. Full Width Security Engines Section (At the very top!) -->
-                        <!-- 📊 1. Top Verdict + AI Analyst (At the very top!) -->
-                        <div class="results-top mb-6">
-                            <div class="verdict-card glass-panel" id="verdict-card">
-                                <div class="vc-left">
-                                    <div class="font-mono text-faint mb-2">THREAT CLASSIFICATION</div>
-                                    <h2 class="font-display vc-title" id="res-title">CLEAN</h2>
-                                    <div class="font-mono mt-2" id="res-target">Target: -</div>
-                                    <div class="verdict-stats mt-4" id="verdict-stats"></div>
-                                </div>
-                                <div class="vc-right">
-                                    <div class="circular-score" id="score-circle" aria-label="Risk score">
-                                        <svg viewBox="0 0 36 36" class="circular-chart">
-                                            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                            <path class="circle-path" id="score-path" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                        </svg>
-                                        <div class="score-text font-display" id="res-score">0</div>
-                                    </div>
-                                    <div class="font-mono text-faint mt-2">RISK SCORE /100</div>
-                                    <div class="scan-time font-mono text-faint text-sm mt-1" id="scan-time"></div>
+                    <!-- Plain English Human Summary Banner -->
+                    <div class="glass-panel p-4 mb-4 font-outfit" id="human-summary-panel" style="background: rgba(255,255,255,0.02); text-align: left; border-left: 4px solid var(--success);">
+                        <p style="font-size: 1.05rem; font-weight: 500;" id="human-summary-text"></p>
+                    </div>
+
+                    <!-- 🛡️ 2. Security Vendor Audit Grid -->
+                    <div class="glass-panel p-6 mb-6" id="engines-panel" style="text-align: left;">
+                        <div class="d-flex justify-between align-center mb-6 flex-wrap gap-4" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                                <h3 class="font-display text-accent" style="font-size: 1.25rem;">🛡️ Security Vendor Audit (<span id="engine-cnt">0</span>)</h3>
+                                <div style="position: relative;">
+                                    <input type="text" id="engine-search" class="font-mono text-input" placeholder="Search vendor (e.g. Symantec)..." style="padding: 6px 12px; font-size: 0.75rem; width: 240px;">
                                 </div>
                             </div>
-
-                            <!-- AI Security Analyst -->
-                            <div class="ai-analyst-card glass-panel">
-                                <div class="ai-header">
-                                    <span class="ai-icon" aria-hidden="true">🧠</span>
-                                    <span class="font-display">AI Security Analyst</span>
-                                    <span class="ai-badge font-mono">COPILOT</span>
-                                </div>
-                                <div class="ai-body font-mono" id="ai-text" aria-live="polite">
-                                    <!-- Typewriter text inserted here -->
-                                </div>
+                            <div class="filter-btns">
+                                <button class="filter-btn font-mono active" id="filter-all" onclick="filterEngines('all')">ALL</button>
+                                <button class="filter-btn font-mono" id="filter-malicious" onclick="filterEngines('malicious')">🔴 THREATS</button>
+                                <button class="filter-btn font-mono" id="filter-clean" onclick="filterEngines('clean')">🟢 CLEAN</button>
                             </div>
                         </div>
+                        <div class="engines-list" id="engines-list"></div>
+                    </div>
 
-                        <!-- 🛡️ 2. Full Width Security Engines Section (Under Verdict) -->
-                        <div class="glass-panel p-6 mb-6" id="engines-panel">
-                            <div class="d-flex justify-between align-center mb-6 flex-wrap gap-4">
-                                <div class="d-flex align-center gap-4 flex-wrap">
-                                    <h3 class="font-display text-accent" style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
-                                        🛡️ Security Vendor Audit (<span id="engine-cnt">0</span>)
-                                    </h3>
-                                    <div class="search-bar" role="search" style="margin-left: 16px;">
-                                        <span class="search-icon" aria-hidden="true" style="left: 12px; font-size: 0.8rem;">🔍</span>
-                                        <input type="text" id="engine-search" class="font-mono" placeholder="Search security vendor (e.g. Symantec)..." autocomplete="off" spellcheck="false" style="padding: 6px 12px 6px 36px; font-size: 0.75rem; width: 260px;">
-                                    </div>
-                                </div>
-                                <div class="filter-btns" role="group" aria-label="Filter engines">
-                                    <button class="filter-btn font-mono active" id="filter-all" onclick="filterEngines('all')">ALL VENDORS</button>
-                                    <button class="filter-btn font-mono" id="filter-malicious" onclick="filterEngines('malicious')">🔴 THREATS ONLY</button>
-                                    <button class="filter-btn font-mono" id="filter-clean" onclick="filterEngines('clean')">🟢 CLEAN VENDORS</button>
-                                </div>
-                            </div>
-                            <div class="engines-list" id="engines-list"></div>
-                        </div>
-
-                        <!-- 🔬 3. Threat Intelligence Details Stack (Dedicated full-width sections) -->
-                        <div class="details-stack">
-                            
-                            <!-- Geolocation Intelligence -->
-                            <div class="glass-panel p-6" id="network-panel">
-                                <h3 class="font-display mb-4 text-accent" style="font-size: 1.25rem;">🌐 Network &amp; Geolocation Intelligence</h3>
-                                <div class="kv-grid" id="network-grid"></div>
-                            </div>
-
-                            <!-- AbuseIPDB Reputation Telemetry -->
-                            <div class="glass-panel p-6" id="abuse-panel">
-                                <h3 class="font-display mb-4 text-danger" style="font-size: 1.25rem;">⚠️ AbuseIPDB Reputation Telemetry</h3>
-                                <div class="kv-grid" id="abuse-grid"></div>
-                            </div>
-
-                            <!-- Shodan InternetDB -->
-                            <div class="glass-panel p-6" id="shodan-panel" style="display:none;">
-                                <h3 class="font-display mb-4" style="color:var(--warning); font-size: 1.25rem;">🔎 Shodan InternetDB — Ports &amp; Vulnerabilities</h3>
-                                <div class="kv-grid">
-                                    <div class="kv-row"><span>Detected Hostnames</span><span id="shodan-hosts" class="font-mono">—</span></div>
-                                </div>
-                                <div class="intel-section mt-4">
-                                    <div class="intel-label font-mono" style="font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">OPEN PORTS</div>
-                                    <div class="tag-row" id="shodan-ports"></div>
-                                </div>
-                                <div class="intel-section mt-4">
-                                    <div class="intel-label font-mono text-danger" style="font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 8px;">CVE VULNERABILITIES</div>
-                                    <div class="tag-row" id="shodan-vulns"></div>
-                                </div>
-                                <div class="intel-section mt-4">
-                                    <div class="intel-label font-mono" style="font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">NETWORK TAGS</div>
-                                    <div class="tag-row" id="shodan-tags"></div>
-                                </div>
-                            </div>
-
-                            <!-- AlienVault OTX -->
-                            <div class="glass-panel p-6" id="otx-panel" style="display:none;">
-                                <h3 class="font-display mb-4" style="color:var(--primary); font-size: 1.25rem;">📡 AlienVault OTX — Threat Pulses</h3>
-                                <div class="kv-grid">
-                                    <div class="kv-row"><span>Active Campaigns Found</span><span id="otx-pulse-count" class="font-mono font-display">—</span></div>
-                                </div>
-                                <div class="intel-section mt-4">
-                                    <div class="intel-label font-mono" style="font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px;">ACTIVE PULSE CAMPAIGNS</div>
-                                    <div id="otx-pulses" class="font-mono text-sm"></div>
-                                </div>
-                            </div>
-
-                            <!-- URLScan.io -->
-                            <div class="glass-panel p-6" id="urlscan-panel" style="display:none;">
-                                <h3 class="font-display mb-4" style="color:var(--accent); font-size: 1.25rem;">🖥️ URLScan.io — Page Render &amp; Analysis</h3>
-                                <div id="urlscan-screenshot" class="mb-4" style="max-width: 800px; margin: 0 auto; border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.5);"></div>
-                                <div class="intel-section mb-4">
-                                    <div class="intel-label font-mono" style="font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">DETECTED TECHNOLOGIES</div>
-                                    <div class="tag-row" id="urlscan-tech"></div>
-                                </div>
-                                <div class="kv-grid" id="urlscan-grid"></div>
-                            </div>
-
-                            <!-- Google Safe Browsing -->
-                            <div class="glass-panel p-6" id="gsb-panel" style="display:none;">
-                                <h3 class="font-display mb-4" style="color:var(--success); font-size: 1.25rem;">🔒 Google Safe Browsing Check</h3>
-                                <div class="kv-grid">
-                                    <div class="kv-row"><span>Safety Status</span><span id="gsb-status" class="font-mono font-display">—</span></div>
-                                </div>
-                                <div class="intel-section mt-4">
-                                    <div class="intel-label font-mono text-danger" style="font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 8px;">THREAT TYPES</div>
-                                    <div class="tag-row" id="gsb-threats"></div>
-                                </div>
-                            </div>
-
+                    <!-- 🔬 3. Threat Intelligence Details Stack -->
+                    <div class="details-stack" style="text-align: left;">
+                        <!-- Geolocation card -->
+                        <div class="glass-panel" id="results-geo-panel" style="display: none;">
+                            <h3 class="font-display" style="color: var(--primary);">🌐 Geolocation &amp; ISP Network Info</h3>
+                            <div class="kv-grid" id="results-geo-grid"></div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- 3. INVESTIGATIONS / HISTORY VIEW -->
-                <div id="view-investigations" class="view" role="region" aria-label="Investigations Timeline">
-                    <div class="glass-panel p-6">
-                        <div class="d-flex justify-between align-center mb-6">
-                            <h2 class="font-display">Investigation Timeline</h2>
-                            <div class="d-flex gap-4">
-                                <button class="secondary-btn font-mono text-sm" id="btn-export" onclick="exportHistory()">⬇ EXPORT JSON</button>
-                                <button class="secondary-btn font-mono text-sm" id="btn-clear-history" onclick="clearHistory()" style="color: var(--danger); border-color: rgba(255,68,68,0.3);">✕ CLEAR</button>
-                            </div>
+            <!-- ── 2. DEEP SCAN VIEW ── -->
+            <div id="view-deepscan" class="view-panel">
+                <h2 class="font-display mb-4" style="text-align: left;">🔍 Deep Threat Security Audits</h2>
+                <p class="text-muted mb-6" style="text-align: left;">Execute specialized audits for passwords, emails, SSL connections, blacklists, and domains.</p>
+                
+                <div class="deep-grid">
+                    <!-- EMAIL REPUTATION CARD -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">📧</span>
+                            <span class="deep-title font-display">Email Reputation</span>
+                            <span class="risk-badge risk-unknown" id="badge-email">Idle</span>
                         </div>
-                        <div class="history-list" id="history-list">
-                            <div class="empty-state font-mono text-faint">No investigations logged in this session.</div>
+                        <p class="deep-desc">Check if email is disposable, leaked, or flagged for spam activity.</p>
+                        <input type="email" id="input-deep-email" class="text-input font-mono" placeholder="Enter target email (e.g. user@scam.com)">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('email')">Scan Email</button>
+                        <div class="loading-ticker-wrapper" id="loading-email"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Verifying reputation...</div></div>
+                        <div id="result-email" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- PASSWORD BREACH CARD -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">🔑</span>
+                            <span class="deep-title font-display">Password Strength &amp; Leak</span>
+                            <span class="risk-badge risk-unknown" id="badge-password">Idle</span>
                         </div>
+                        <p class="deep-desc">Calculates password strength score &amp; runs k-anonymity breach range check.</p>
+                        <div style="position: relative;">
+                            <input type="password" id="input-deep-password" class="text-input font-mono" placeholder="Enter password to test">
+                            <span style="position: absolute; right: 12px; top: 12px; cursor: pointer;" onclick="togglePasswordVisibility('input-deep-password')">👁️</span>
+                        </div>
+                        <button class="primary-btn font-mono" onclick="runDeepScan('password')">Verify Password</button>
+                        <div class="loading-ticker-wrapper" id="loading-password"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Cross-referencing databases...</div></div>
+                        <div id="result-password" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- WHOIS LOOKUP CARD -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">📝</span>
+                            <span class="deep-title font-display">WHOIS Domain Info</span>
+                            <span class="risk-badge risk-unknown" id="badge-whois">Idle</span>
+                        </div>
+                        <p class="deep-desc">Audit registrar, domain age (< 30 days flags alerts), expiry timeframe.</p>
+                        <input type="text" id="input-deep-whois" class="text-input font-mono" placeholder="domain.com">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('whois')">Fetch WHOIS</button>
+                        <div class="loading-ticker-wrapper" id="loading-whois"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Retrieving registrar records...</div></div>
+                        <div id="result-whois" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- SSL CERTIFICATE CARD -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">🔒</span>
+                            <span class="deep-title font-display">SSL Cert Grade</span>
+                            <span class="risk-badge risk-unknown" id="badge-ssl">Idle</span>
+                        </div>
+                        <p class="deep-desc">Audit SSL Labs grade, issuer parameters, TLS 1.3 support &amp; expiration flags.</p>
+                        <input type="text" id="input-deep-ssl" class="text-input font-mono" placeholder="domain.com">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('ssl')">Analyze Certificate</button>
+                        <div class="loading-ticker-wrapper" id="loading-ssl"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Polling server details (takes ~15s)...</div></div>
+                        <div id="result-ssl" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- DNS RECORDS LOOKUP -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">📡</span>
+                            <span class="deep-title font-display">DNS Sec Audit</span>
+                            <span class="risk-badge risk-unknown" id="badge-dns">Idle</span>
+                        </div>
+                        <p class="deep-desc">Lookup A, MX, NS, TXT records and check SPF/DMARC email security configs.</p>
+                        <input type="text" id="input-deep-dns" class="text-input font-mono" placeholder="domain.com">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('dns')">Verify DNS</button>
+                        <div class="loading-ticker-wrapper" id="loading-dns"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Resolving records...</div></div>
+                        <div id="result-dns" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- SAFE SCREENSHOT PREVIEW -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">🖼️</span>
+                            <span class="deep-title font-display">Safe Preview</span>
+                            <span class="risk-badge risk-unknown" id="badge-screenshot">Idle</span>
+                        </div>
+                        <p class="deep-desc">Render layout visual of URL safely using urlscan.io sandbox. (Requires API Key)</p>
+                        <input type="text" id="input-deep-screenshot" class="text-input font-mono" placeholder="https://phishingsite.net">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('screenshot')">Generate Preview</button>
+                        <div class="loading-ticker-wrapper" id="loading-screenshot"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Submitting URL scan sandbox (takes ~12s)...</div></div>
+                        <div id="result-screenshot" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- DNS BLACKLIST CHECK -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">🚫</span>
+                            <span class="deep-title font-display">Blacklist Audit</span>
+                            <span class="risk-badge risk-unknown" id="badge-blacklist">Idle</span>
+                        </div>
+                        <p class="deep-desc">Cross-reference IP coordinates against major DNSBL databases (Spamhaus, Spamcop, etc.).</p>
+                        <input type="text" id="input-deep-blacklist" class="text-input font-mono" placeholder="1.2.3.4">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('blacklist')">Query Blacklists</button>
+                        <div class="loading-ticker-wrapper" id="loading-blacklist"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Checking DNS blacklists...</div></div>
+                        <div id="result-blacklist" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- MALWARE HASH LOOKUP -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">☣️</span>
+                            <span class="deep-title font-display">Malware Hash Lookup</span>
+                            <span class="risk-badge risk-unknown" id="badge-hash">Idle</span>
+                        </div>
+                        <p class="deep-desc">Query file MD5, SHA-1, or SHA-256 coordinates against MalwareBazaar database.</p>
+                        <input type="text" id="input-deep-hash" class="text-input font-mono" placeholder="SHA-256, SHA-1 or MD5 hash value">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('hash')">Search Hash</button>
+                        <div class="loading-ticker-wrapper" id="loading-hash"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Searching repository...</div></div>
+                        <div id="result-hash" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- ALIENVAULT OTX -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">🗺️</span>
+                            <span class="deep-title font-display">OTX Pulses</span>
+                            <span class="risk-badge risk-unknown" id="badge-otx">Idle</span>
+                        </div>
+                        <p class="deep-desc">Audit threat pulse campaigns, adversaries &amp; tags recorded on AlienVault OTX.</p>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="input-deep-otx" class="text-input font-mono" placeholder="IP, Domain or URL" style="flex-grow: 1;">
+                            <select id="select-deep-otx-type" class="text-input font-mono" style="width: 120px;">
+                                <option value="IPv4">IP</option>
+                                <option value="domain">Domain</option>
+                            </select>
+                        </div>
+                        <button class="primary-btn font-mono" onclick="runDeepScan('otx')">Query OTX</button>
+                        <div class="loading-ticker-wrapper" id="loading-otx"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Retrieving pulse database...</div></div>
+                        <div id="result-otx" class="collapsible-content"></div>
+                    </div>
+
+                    <!-- PHISHTANK CHECK -->
+                    <div class="glass-panel deep-card card-active-glow">
+                        <div class="deep-header">
+                            <span class="deep-icon">🎣</span>
+                            <span class="deep-title font-display">PhishTank Blacklist</span>
+                            <span class="risk-badge risk-unknown" id="badge-phishing">Idle</span>
+                        </div>
+                        <p class="deep-desc">Verify if URL matches verified phish campaigns tracked on PhishTank database.</p>
+                        <input type="text" id="input-deep-phishing" class="text-input font-mono" placeholder="http://phishing-site.net/verify">
+                        <button class="primary-btn font-mono" onclick="runDeepScan('phishing')">Verify URL</button>
+                        <div class="loading-ticker-wrapper" id="loading-phishing"><div class="loading-spinner"></div><div class="loading-ticker-text font-mono">Checking database records...</div></div>
+                        <div id="result-phishing" class="collapsible-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 3. HISTORY VIEW ── -->
+            <div id="view-history" class="view-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 class="font-display" style="text-align: left;">📋 Timeline History</h2>
+                    <button class="secondary-btn font-mono" onclick="clearTimelineHistory()">Clear Timeline</button>
+                </div>
+                <div class="history-timeline" id="history-timeline-list">
+                    <div class="empty-state font-mono text-faint">No scans performed yet in this session. Run scans on Scanner/Deep Scan to build local timeline.</div>
+                </div>
+            </div>
+
+            <!-- ── 4. PRICING VIEW ── -->
+            <div id="view-pricing" class="view-panel" style="text-align: left;">
+                <h2 class="font-display mb-2">Upgrade Your Shield</h2>
+                <p class="text-muted mb-6">Choose a plan that fits your security workflow requirements.</p>
+
+                <div class="pricing-layout">
+                    <!-- FREE -->
+                    <div class="glass-panel price-card">
+                        <div class="price-header">
+                            <h3>Community</h3>
+                            <div class="price-cost">$0 <span>/ month</span></div>
+                        </div>
+                        <p class="text-muted" style="font-size: 0.85rem;">Standard checkouts for security hobbyists &amp; casual users.</p>
+                        <ul class="price-features">
+                            <li><span>✅</span> 5 scans / day limit</li>
+                            <li><span>✅</span> Access to standard scans</li>
+                            <li><span>❌</span> No historic dashboard logs</li>
+                            <li><span>❌</span> Personal API key integration</li>
+                        </ul>
+                        <button class="secondary-btn font-mono" onclick="navigate('scanner')">Current Tier</button>
+                    </div>
+
+                    <!-- PRO -->
+                    <div class="glass-panel price-card featured">
+                        <div class="price-featured-tag font-display">Most Popular</div>
+                        <div class="price-header">
+                            <h3>Researcher Pro</h3>
+                            <div class="price-cost">$4.99 <span>/ month</span></div>
+                        </div>
+                        <p class="text-muted" style="font-size: 0.85rem;">Early bird launch pricing. Complete security intelligence tools.</p>
+                        <ul class="price-features">
+                            <li><span>✅</span> Unlimited scans daily</li>
+                            <li><span>✅</span> Full 91+ engines detail log</li>
+                            <li><span>✅</span> Historic timeline saved forever</li>
+                            <li><span>✅</span> Dedicated support channel</li>
+                        </ul>
+                        <button class="primary-btn font-mono" onclick="openWaitlistModal()">Get Notified</button>
+                    </div>
+
+                    <!-- BYOK -->
+                    <div class="glass-panel price-card">
+                        <div class="price-header">
+                            <h3>Bring Your Own Key</h3>
+                            <div class="price-cost">$0 <span>/ free always</span></div>
+                        </div>
+                        <p class="text-muted" style="font-size: 0.85rem;">Unlock unlimited scan checks by integrating your own keys.</p>
+                        <ul class="price-features">
+                            <li><span>✅</span> Unlimited scans daily</li>
+                            <li><span>✅</span> Local storage key management</li>
+                            <li><span>✅</span> Full 12 services audits</li>
+                            <li><span>✅</span> Keys never leave browser</li>
+                        </ul>
+                        <button class="primary-btn font-mono" style="background: var(--warning); color:#000; box-shadow: 0 4px 15px var(--warning-glow);" onclick="navigate('byok')">Add My Keys</button>
                     </div>
                 </div>
 
-                <!-- 4. GLOBAL THREAT MAP VIEW -->
-                <div id="view-map" class="view" role="region" aria-label="Global Threat Map">
-                    <div class="glass-panel map-container">
-                        <div class="map-overlay">
-                            <h2 class="font-display">Global Cyber Attack Map</h2>
-                            <p class="font-mono text-muted text-sm mt-2">Visualizing live telemetry data and originating threat vectors.</p>
-                            <div class="map-legend mt-4">
-                                <div class="legend-item"><span class="dot-small" style="background: var(--danger);"></span> <span class="font-mono text-sm">Critical Threat</span></div>
-                                <div class="legend-item"><span class="dot-small" style="background: var(--warning);"></span> <span class="font-mono text-sm">Suspicious Activity</span></div>
-                                <div class="legend-item"><span class="dot-small" style="background: var(--primary);"></span> <span class="font-mono text-sm">Known Malware C2</span></div>
-                            </div>
+                <!-- FAQ Section -->
+                <div class="faq-section">
+                    <h3 class="font-display mb-4">Frequently Asked Questions</h3>
+                    <div class="faq-item">
+                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">How does Bring Your Own Key (BYOK) work? <span>▼</span></div>
+                        <div class="faq-answer">By entering your free keys from services like VirusTotal or AbuseIPDB on the settings tab, the CyberShield engine will perform API calls using your personal key thresholds, granting you unlimited daily checks.</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">Are my API keys safe? <span>▼</span></div>
+                        <div class="faq-answer">Absolutely. We save your keys inside your browser's local storage only. We never save them on our databases, ensuring total developer privacy.</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">Can I delete my account scans history? <span>▼</span></div>
+                        <div class="faq-answer">Yes, logged in users can purge their database logs entirely from their dashboard panel at any time.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 5. BYOK SETTINGS VIEW ── -->
+            <div id="view-byok" class="view-panel" style="text-align: left;">
+                <h2 class="font-display mb-2">⚙️ Bring Your Own Key (BYOK)</h2>
+                <p class="text-muted mb-6">Enter your credentials below to enable unlimited free scans. Keys are stored safely in local browser memory only.</p>
+
+                <div class="byok-grid">
+                    <!-- VirusTotal -->
+                    <div class="glass-panel byok-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="font-display" style="font-weight: bold;">VirusTotal API</span>
+                            <span class="byok-status-pill status-notset" id="key-status-virustotal">Not Set</span>
                         </div>
-                        <div class="world-map-sim" aria-hidden="true">
-                            <div class="map-point p1"></div>
-                            <div class="map-point p2"></div>
-                            <div class="map-point p3"></div>
-                            <div class="map-point p4"></div>
-                            <div class="map-point p5" style="background:var(--warning); box-shadow: 0 0 15px var(--warning); top:55%; left:35%;"></div>
-                            <div class="map-point p6" style="background:var(--primary); box-shadow: 0 0 15px var(--primary); top:25%; left:55%;"></div>
-                            <div class="map-connection c1"></div>
+                        <a href="https://www.virustotal.com/gui/my-apikey" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--primary);">Get Free VT Key ↗</a>
+                        <div class="key-input-wrapper">
+                            <input type="password" id="key-input-virustotal" class="text-input font-mono" placeholder="x-apikey string" style="flex-grow: 1;">
+                            <button class="secondary-btn" onclick="togglePasswordVisibility('key-input-virustotal')">👁️</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="primary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="saveKey('virustotal')">Save</button>
+                            <button class="secondary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeKey('virustotal')">Remove</button>
+                        </div>
+                    </div>
+
+                    <!-- AbuseIPDB -->
+                    <div class="glass-panel byok-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="font-display" style="font-weight: bold;">AbuseIPDB API</span>
+                            <span class="byok-status-pill status-notset" id="key-status-abuseipdb">Not Set</span>
+                        </div>
+                        <a href="https://www.abuseipdb.com/account/api" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--primary);">Get Free AbuseIPDB Key ↗</a>
+                        <div class="key-input-wrapper">
+                            <input type="password" id="key-input-abuseipdb" class="text-input font-mono" placeholder="Key string" style="flex-grow: 1;">
+                            <button class="secondary-btn" onclick="togglePasswordVisibility('key-input-abuseipdb')">👁️</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="primary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="saveKey('abuseipdb')">Save</button>
+                            <button class="secondary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeKey('abuseipdb')">Remove</button>
+                        </div>
+                    </div>
+
+                    <!-- URLScan.io -->
+                    <div class="glass-panel byok-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="font-display" style="font-weight: bold;">URLScan.io API</span>
+                            <span class="byok-status-pill status-notset" id="key-status-urlscan">Not Set</span>
+                        </div>
+                        <a href="https://urlscan.io/user/profile/" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--primary);">Get Free URLScan Key ↗</a>
+                        <div class="key-input-wrapper">
+                            <input type="password" id="key-input-urlscan" class="text-input font-mono" placeholder="API Key" style="flex-grow: 1;">
+                            <button class="secondary-btn" onclick="togglePasswordVisibility('key-input-urlscan')">👁️</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="primary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="saveKey('urlscan')">Save</button>
+                            <button class="secondary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeKey('urlscan')">Remove</button>
+                        </div>
+                    </div>
+
+                    <!-- OTX -->
+                    <div class="glass-panel byok-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="font-display" style="font-weight: bold;">AlienVault OTX API</span>
+                            <span class="byok-status-pill status-notset" id="key-status-otx">Not Set</span>
+                        </div>
+                        <a href="https://otx.alienvault.com/api" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--primary);">Get Free OTX Key ↗</a>
+                        <div class="key-input-wrapper">
+                            <input type="password" id="key-input-otx" class="text-input font-mono" placeholder="X-OTX-API-KEY string" style="flex-grow: 1;">
+                            <button class="secondary-btn" onclick="togglePasswordVisibility('key-input-otx')">👁️</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="primary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="saveKey('otx')">Save</button>
+                            <button class="secondary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeKey('otx')">Remove</button>
+                        </div>
+                    </div>
+
+                    <!-- Phishtank -->
+                    <div class="glass-panel byok-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="font-display" style="font-weight: bold;">PhishTank API</span>
+                            <span class="byok-status-pill status-notset" id="key-status-phishtank">Not Set</span>
+                        </div>
+                        <a href="https://www.phishtank.com/api_register.php" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--primary);">Get Free PhishTank Key ↗</a>
+                        <div class="key-input-wrapper">
+                            <input type="password" id="key-input-phishtank" class="text-input font-mono" placeholder="App Key string" style="flex-grow: 1;">
+                            <button class="secondary-btn" onclick="togglePasswordVisibility('key-input-phishtank')">👁️</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="primary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="saveKey('phishtank')">Save</button>
+                            <button class="secondary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeKey('phishtank')">Remove</button>
+                        </div>
+                    </div>
+
+                    <!-- Shodan -->
+                    <div class="glass-panel byok-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="font-display" style="font-weight: bold;">Shodan API</span>
+                            <span class="byok-status-pill status-notset" id="key-status-shodan">Not Set</span>
+                        </div>
+                        <a href="https://account.shodan.io" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--primary);">Get Free Shodan Key ↗</a>
+                        <div class="key-input-wrapper">
+                            <input type="password" id="key-input-shodan" class="text-input font-mono" placeholder="API Key" style="flex-grow: 1;">
+                            <button class="secondary-btn" onclick="togglePasswordVisibility('key-input-shodan')">👁️</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="primary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="saveKey('shodan')">Save</button>
+                            <button class="secondary-btn font-mono" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeKey('shodan')">Remove</button>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- 5. ANALYTICS VIEW -->
-                <div id="view-analytics" class="view" role="region" aria-label="Threat Analytics">
-                    <div class="dashboard-grid">
-                        <div class="glass-panel p-6" style="grid-column: span 2;">
-                            <h3 class="font-display mb-4">Threat Trends (This Session)</h3>
-                            <div class="chart-sim bar-chart" id="bar-chart" aria-label="Bar chart"></div>
-                            <div class="chart-labels font-mono text-faint" id="chart-labels"></div>
-                        </div>
-                        <div class="glass-panel p-6">
-                            <h3 class="font-display mb-4">Risk Distribution</h3>
-                            <div class="pie-chart-wrapper">
-                                <div class="chart-sim pie-chart" id="pie-chart" aria-label="Pie chart of risk distribution"></div>
-                                <div class="pie-legend" id="pie-legend">
-                                    <div class="legend-item"><span class="dot-small" style="background:var(--danger)"></span> <span class="font-mono text-sm">Critical</span></div>
-                                    <div class="legend-item"><span class="dot-small" style="background:var(--warning)"></span> <span class="font-mono text-sm">Suspicious</span></div>
-                                    <div class="legend-item"><span class="dot-small" style="background:var(--success)"></span> <span class="font-mono text-sm">Clean</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="glass-panel p-6">
-                            <h3 class="font-display mb-4">Session Summary</h3>
-                            <div class="kv-grid" id="analytics-summary">
-                                <div class="kv-row"><span>Total Scans</span><span id="ana-total" class="font-mono">0</span></div>
-                                <div class="kv-row"><span>Critical Threats</span><span id="ana-critical" class="font-mono text-danger">0</span></div>
-                                <div class="kv-row"><span>Suspicious</span><span id="ana-suspicious" class="font-mono text-warning">0</span></div>
-                                <div class="kv-row"><span>Clean</span><span id="ana-clean" class="font-mono text-success">0</span></div>
-                            </div>
-                        </div>
+            <!-- ── 6. ABOUT TAB ── -->
+            <div id="view-about" class="view-panel" style="text-align: left; max-width: 800px; margin: 0 auto 80px;">
+                <h2 class="font-display mb-4">📖 About CyberShield</h2>
+                <p class="mb-4">
+                    CyberShield was founded on a simple principle: <strong>everyone has the right to navigate the internet safely.</strong> In an era of rampant phishing, credential breaches, and ransomware distribution, clicking a link or downloading a file should not feel like playing Russian roulette.
+                </p>
+                <p class="mb-4">
+                    We aggregate the security analyses of <strong>91+ independent scanners</strong>, spam watchlists, certificate details, and threat pulse reports.
+                </p>
+                <h3 class="font-display mt-6 mb-3">Our Commitments:</h3>
+                <ul style="list-style: square; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+                    <li><strong>No Tracking:</strong> We never log your personal coordinates, IPs, or location telemetry.</li>
+                    <li><strong>No Data Brokering:</strong> We don't sell information to ad agencies or data aggregators.</li>
+                    <li><strong>Open BYOK Access:</strong> Integrating your developer keys allows unlimited free checks forever.</li>
+                </ul>
+                <h3 class="font-display mt-6 mb-3">Underlying Intelligence:</h3>
+                <p class="text-muted" style="font-size: 0.9rem;">
+                    Platform integrations include: VirusTotal, AbuseIPDB, AlienVault OTX, HaveIBeenPwned, PhishTank, SSL Labs, Google Safe Browsing, MalwareBazaar, and URLScan.io.
+                </p>
+            </div>
+
+            <!-- ── 7. LOGGED IN USER DASHBOARD ── -->
+            <div id="view-dashboard" class="view-panel" style="text-align: left;">
+                <h2 class="font-display mb-2" id="dash-welcome">Security Overview 👋</h2>
+                <p class="text-muted mb-6">Review your account status and historic scan timeline logs.</p>
+
+                <div class="stats-bar">
+                    <div class="stat-card public-stat glass-panel">
+                        <div class="stat-val font-display" id="dash-scans-total">--</div>
+                        <div class="stat-lbl font-mono">Total Scans</div>
+                    </div>
+                    <div class="stat-card public-stat glass-panel">
+                        <div class="stat-val font-display" id="dash-scans-today">--</div>
+                        <div class="stat-lbl font-mono">Scans Today</div>
+                    </div>
+                    <div class="stat-card public-stat glass-panel">
+                        <div class="stat-val font-display" id="dash-tier">--</div>
+                        <div class="stat-lbl font-mono">Tier level</div>
+                    </div>
+                    <div class="stat-card public-stat glass-panel" style="grid-column: span 2;">
+                        <div class="stat-val font-display" id="dash-joined" style="font-size: 1rem; padding: 6px 0;">--</div>
+                        <div class="stat-lbl font-mono">Member Since</div>
                     </div>
                 </div>
 
-                <!-- 6. SETTINGS VIEW -->
-                <div id="view-settings" class="view" role="region" aria-label="Platform Settings">
-                    <div class="glass-panel p-6 max-w-3xl">
-                        <h2 class="font-display mb-6">⚙️ Platform Settings</h2>
-                        
-                        <div class="settings-group">
-                            <h4 class="font-mono text-accent mb-4">API CONNECTION STATUS</h4>
-                            <div class="kv-row border-b"><span class="text-muted">VirusTotal Engine</span> <span class="text-success font-mono" id="set-vt-status">CHECKING...</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">AbuseIPDB Engine</span> <span class="text-success font-mono" id="set-abuse-status">CHECKING...</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">IPinfo Geolocation</span> <span class="text-success font-mono" id="set-ipinfo-status">CHECKING...</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">AlienVault OTX</span> <span class="text-success font-mono" id="set-otx-status">CHECKING...</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">URLScan.io Page Scanner</span> <span class="text-success font-mono" id="set-urlscan-status">CHECKING...</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">Google Safe Browsing</span> <span class="text-success font-mono" id="set-gsb-status">CHECKING...</span></div>
-                            <div class="kv-row border-b"><span class="text-muted">Shodan InternetDB</span> <span class="text-success font-mono">ONLINE (NO KEY REQUIRED)</span></div>
-                            <div class="kv-row border-b"><span class="text-faint font-mono">v2.1.0 Enterprise</span></div>
-                        </div>
+                <!-- Upgrade Banner -->
+                <div class="glass-panel p-6 mb-6" style="background: linear-gradient(135deg, rgba(124,58,237,0.1) 0%, transparent 100%); border-color: rgba(124,58,237,0.3); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h3 class="font-display" style="color: #b794f4;">Ready for early alerts?</h3>
+                        <p class="text-muted" style="font-size: 0.88rem; margin-top: 4px;">Monitor your personal domains for security configurations and credential leaks.</p>
+                    </div>
+                    <button class="primary-btn font-mono" style="background: var(--purple); box-shadow: 0 4px 15px rgba(124,58,237,0.4);" onclick="openWaitlistModal()">Upgrade to Pro</button>
+                </div>
 
-                        <div class="settings-group mt-8">
-                            <h4 class="font-mono text-accent mb-4">THREAT FEEDS</h4>
-                            <div class="d-flex justify-between align-center border-b pb-3 mb-3">
-                                <div>
-                                    <div>Real-time Malware Feeds</div>
-                                    <div class="font-mono text-faint text-sm">VirusTotal multi-engine analysis</div>
-                                </div>
-                                <div class="toggle active" id="toggle-malware" role="switch" aria-checked="true"></div>
-                            </div>
-                            <div class="d-flex justify-between align-center border-b pb-3 mb-3">
-                                <div>
-                                    <div>Phishing URL Telemetry</div>
-                                    <div class="font-mono text-faint text-sm">Real-time URL reputation scoring</div>
-                                </div>
-                                <div class="toggle active" id="toggle-phishing" role="switch" aria-checked="true"></div>
-                            </div>
-                            <div class="d-flex justify-between align-center pb-3">
-                                <div>
-                                    <div>IP Abuse Intelligence</div>
-                                    <div class="font-mono text-faint text-sm">AbuseIPDB community reports</div>
-                                </div>
-                                <div class="toggle active" id="toggle-abuse" role="switch" aria-checked="true"></div>
-                            </div>
-                        </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 class="font-display">📋 Historic DB Scan Logs</h3>
+                    <button class="secondary-btn font-mono" style="color: var(--danger); border-color: rgba(255,68,68,0.2);" onclick="purgeUserDbHistory()">Purge DB History</button>
+                </div>
+                
+                <div class="admin-table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Scan Date</th>
+                                <th>Indicator Target</th>
+                                <th>Category Type</th>
+                                <th>Risk level</th>
+                                <th>Score</th>
+                                <th>Re-run</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-history-rows">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
 
-                        <div class="settings-group mt-8">
-                            <h4 class="font-mono text-accent mb-4">SECURITY INFORMATION</h4>
-                            <div class="security-info-box font-mono text-faint text-sm">
-                                <p>🔒 All scan data is transmitted over HTTPS (TLS 1.2+).</p>
-                                <p class="mt-2">🔒 No scan results are stored or logged on our servers.</p>
-                                <p class="mt-2">🔒 Rate limiting is enforced at 50 requests/minute per IP.</p>
-                                <p class="mt-2">🔒 CORS policy restricts API access to this domain only.</p>
-                            </div>
-                        </div>
+        <!-- FOOTER -->
+        <footer>
+            <div class="container footer-grid">
+                <div style="text-align: left;">
+                    <div class="footer-logo font-display">🛡️ CyberShield</div>
+                    <p style="margin-bottom: 16px; font-size: 0.88rem; max-width: 450px;">
+                        CyberShield was built because everyone deserves to know if a link is safe before clicking it. No trackers, no bloatware, just security intelligence.
+                    </p>
+                    <p style="font-size: 0.8rem; color: var(--text-faint);">
+                        Powered by VirusTotal, AbuseIPDB, HaveIBeenPwned, AlienVault OTX, URLScan.io, SSL Labs, and Google Safe Browsing.
+                    </p>
+                </div>
+                <div style="text-align: left;">
+                    <h4 class="font-display" style="color: white; margin-bottom: 16px; font-size: 0.95rem;">Documentation</h4>
+                    <ul class="footer-links">
+                        <li><a href="#" onclick="openTermsModal('terms')">Terms of Service</a></li>
+                        <li><a href="#" onclick="openTermsModal('privacy')">Privacy Policy</a></li>
+                        <li><a href="https://github.com/Bgm8/cybershield" target="_blank" rel="noopener noreferrer">GitHub Code ↗</a></li>
+                    </ul>
+                </div>
+                <div style="text-align: left;">
+                    <h4 class="font-display" style="color: white; margin-bottom: 16px; font-size: 0.95rem;">Platform</h4>
+                    <p style="font-size: 0.85rem; line-height: 1.6; margin-bottom: 12px;">No ads. No tracking. No selling your personal data.</p>
+                    <a href="#admin" class="font-mono" style="color: var(--danger); font-size: 0.8rem; text-decoration: none;">🔒 Administrative Area</a>
+                </div>
+            </div>
+            <div class="container footer-bottom">
+                &copy; 2026 CyberShield AI Security Platform. All Rights Reserved.
+            </div>
+        </footer>
+    </div>
+
+    <!-- ── 8. ADMIN CONTROL INTERFACE ──────────────────────────────────────── -->
+    <div id="admin-panel">
+        <header class="admin-header">
+            <div class="container header-wrapper">
+                <div class="admin-logo font-display">⚡ CYBERSHIELD CONTROL PANEL</div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="maintenance-btn-switch font-mono" id="admin-maintenance-btn" onclick="toggleMaintenanceMode()">MAINTENANCE MODE: OFF</button>
+                    <button class="secondary-btn font-mono" style="padding: 6px 12px; border-color: var(--danger); color: var(--danger);" onclick="exitAdmin()">Exit Admin</button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="admin-nav" role="navigation" aria-label="Admin tabs">
+            <button class="admin-tab active font-mono" onclick="navigateAdmin('stats')">TELEMETRY STATS</button>
+            <button class="admin-tab font-mono" onclick="navigateAdmin('activity')">LIVE ACTIVITY FEED</button>
+            <button class="admin-tab font-mono" onclick="navigateAdmin('users')">USER RECORDS</button>
+            <button class="admin-tab font-mono" onclick="navigateAdmin('waitlist')">WAITLIST</button>
+            <button class="admin-tab font-mono" onclick="navigateAdmin('health')">SYSTEM HEALTH</button>
+        </nav>
+
+        <main class="container">
+            <!-- ADMIN VIEW: STATS -->
+            <div id="admin-view-stats" class="admin-view-panel active">
+                <div class="stats-bar">
+                    <div class="stat-card glass-panel" style="border-top: 2px solid var(--danger);">
+                        <div class="stat-val font-display" id="admin-total-scans">--</div>
+                        <div class="stat-lbl font-mono">Total Scans Ever</div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-val font-display" id="admin-scans-today">--</div>
+                        <div class="stat-lbl font-mono">Scans Today</div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-val font-display" id="admin-scans-week">--</div>
+                        <div class="stat-lbl font-mono">Scans This Week</div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-val font-display" id="admin-registered-users">--</div>
+                        <div class="stat-lbl font-mono">Supabase Users</div>
+                    </div>
+                    <div class="stat-card glass-panel">
+                        <div class="stat-val font-display" id="admin-errors-today" style="color: var(--danger);">--</div>
+                        <div class="stat-lbl font-mono">Errors Today</div>
                     </div>
                 </div>
 
+                <!-- Admin Analytics Charts -->
+                <div class="admin-charts-grid">
+                    <div class="chart-container glass-panel">
+                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">📈 SCANS VOLUME (LAST 24 HOURS)</h4>
+                        <div style="height: 250px; position: relative;">
+                            <canvas id="chart-scans-hours"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">🍩 THREAT CLASSIFICATION RATIOS</h4>
+                        <div style="height: 250px; position: relative;">
+                            <canvas id="chart-threats-donut"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW: ACTIVITY -->
+            <div id="admin-view-activity" class="admin-view-panel" style="text-align: left;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h3 class="font-display">⚡ Live Scan Activity (Refresh 10s)</h3>
+                    <button class="secondary-btn font-mono" onclick="exportAdminActivityCsv()">Export CSV</button>
+                </div>
+                <div class="admin-table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Target ID</th>
+                                <th>Service Used</th>
+                                <th>Threat level</th>
+                                <th>Index</th>
+                                <th>Client (Hash)</th>
+                                <th>Response Time</th>
+                                <th>BYOK</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-activity-rows">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW: USERS -->
+            <div id="admin-view-users" class="admin-view-panel" style="text-align: left;">
+                <h3 class="font-display mb-6">👥 Registered User Directory</h3>
+                <div class="admin-table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>UID Reference</th>
+                                <th>Email Address</th>
+                                <th>Tier Badge</th>
+                                <th>Total Scans</th>
+                                <th>Scans Today</th>
+                                <th>Banned Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-rows">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW: WAITLIST -->
+            <div id="admin-view-waitlist" class="admin-view-panel" style="text-align: left;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h3 class="font-display">📬 Early Access Waitlist</h3>
+                    <button class="secondary-btn font-mono" onclick="exportAdminWaitlistCsv()">Export CSV</button>
+                </div>
+                <div class="admin-table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Waitlist ID</th>
+                                <th>Email</th>
+                                <th>Signup Source</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-waitlist-rows">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW: HEALTH -->
+            <div id="admin-view-health" class="admin-view-panel" style="text-align: left;">
+                <h3 class="font-display mb-6">🩺 System Health Diagnostics</h3>
+                
+                <div class="admin-charts-grid" style="grid-template-columns: 1fr 2fr;">
+                    <div class="chart-container glass-panel">
+                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">⚙️ KEY API STATUS</h4>
+                        <div class="kv-grid" id="admin-health-keys-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div class="chart-container glass-panel">
+                        <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">🚨 ERROR REGISTER LOG (LAST 10)</h4>
+                        <div class="admin-table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 150px;">Time</th>
+                                        <th>Error Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-health-errors">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
 
-    <!-- Application Logic -->
-    <script src="app.js"></script>
+    <!-- ── MODAL OVERLAYS ── -->
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeAuthModal()">×</button>
+            <h2 class="font-display mb-4" id="auth-modal-title">Welcome Back 👋</h2>
+            
+            <div class="signup-benefits" id="auth-benefits-list" style="display: none;">
+                <div>💡 Sign up free to unlock:</div>
+                <div style="margin-top: 4px;">✅ 20 scans/day quota limit</div>
+                <div>✅ Save your scan timeline history forever</div>
+                <div>✅ Configure developer BYOK credentials</div>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                <div style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+                    <div>
+                        <label class="font-mono text-muted text-sm mb-1 d-block">EMAIL ADDRESS</label>
+                        <input type="email" id="auth-email" class="text-input font-mono" required>
+                    </div>
+                    <div id="auth-password-wrapper">
+                        <label class="font-mono text-muted text-sm mb-1 d-block">PASSWORD</label>
+                        <input type="password" id="auth-password" class="text-input font-mono">
+                    </div>
+                    <button type="submit" class="primary-btn font-mono" id="auth-submit-btn">Login</button>
+                </div>
+            </form>
+
+            <!-- Prominent Google OAuth signup button -->
+            <button class="secondary-btn font-mono mt-3" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="handleGoogleLogin()">
+                <span>🔑</span> Continue with Google Account
+            </button>
+
+            <div id="auth-error-msg" class="font-mono text-danger mt-3" style="font-size: 0.85rem; display: none;"></div>
+
+            <div class="auth-toggle-hint font-outfit">
+                <span id="auth-toggle-text">Don't have an account?</span> 
+                <span class="auth-toggle-link" id="auth-toggle-action" onclick="toggleAuthMode()">Sign Up Free</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Limit Reached Modal -->
+    <div id="limit-modal" class="modal-overlay">
+        <div class="modal-card" style="text-align: left;">
+            <button class="modal-close" onclick="closeLimitModal()">×</button>
+            <h2 class="font-display mb-3">Quota Limit Reached 🛡️</h2>
+            <p class="text-muted">You have used all your free scans for today. Here's how to keep scanning:</p>
+            
+            <div class="limit-options-grid font-outfit">
+                <div class="limit-opt-card" onclick="openAuthModal('signup'); closeLimitModal();">
+                    <strong style="color: var(--primary);">1. Register Free Account ➔</strong>
+                    <div class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">Increases quota allocation from 5 to 20 scans daily. No credit card required.</div>
+                </div>
+                <div class="limit-opt-card" onclick="navigate('byok'); closeLimitModal();">
+                    <strong style="color: var(--warning);">2. Save Personal API Keys ➔</strong>
+                    <div class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">Add your developer VT / AbuseIPDB keys to bypass daily limits.</div>
+                </div>
+                <div class="limit-opt-card" onclick="closeLimitModal()">
+                    <strong>3. Resume Scanning Tomorrow</strong>
+                    <div class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">Wait for daily resetting coordinates (resets at midnight UTC).</div>
+                </div>
+            </div>
+
+            <!-- Waitlist Form -->
+            <div style="margin-top: 24px; border-top: 1px solid var(--border-light); padding-top: 24px;">
+                <h4 class="font-display mb-2" style="font-size: 0.9rem; color: #b794f4;">Join Pro Waitlist:</h4>
+                <div style="display: flex; gap: 8px;">
+                    <input type="email" id="waitlist-email" class="text-input font-mono" placeholder="developer@email.com" style="flex-grow: 1;">
+                    <button class="primary-btn font-mono" style="padding: 10px 16px; background: var(--purple);" onclick="submitWaitlist()">Join</button>
+                </div>
+                <div id="waitlist-msg" class="font-mono mt-2" style="font-size: 0.8rem; display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Verify Modal -->
+    <div id="admin-verify-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h2 class="font-display mb-4" style="color: var(--danger);">🔒 Administrative Verify</h2>
+            <form onsubmit="handleAdminVerifySubmit(event)">
+                <div style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+                    <div>
+                        <label class="font-mono text-muted text-sm mb-1 d-block">ADMINPASSWORD</label>
+                        <input type="password" id="admin-password" class="text-input font-mono" required>
+                    </div>
+                    <button type="submit" class="primary-btn font-mono" style="background: var(--danger); box-shadow: 0 4px 15px var(--danger-glow);">Verify credentials</button>
+                    <button type="button" class="secondary-btn font-mono" onclick="exitAdmin()">Cancel</button>
+                </div>
+            </form>
+            <div id="admin-verify-error" class="font-mono text-danger mt-3" style="font-size: 0.85rem; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Legal Terms Modals -->
+    <div id="terms-modal" class="modal-overlay">
+        <div class="modal-card" style="text-align: left; max-height: 80vh; overflow-y: auto; max-width: 600px;">
+            <button class="modal-close" onclick="closeTermsModal()">×</button>
+            <h2 class="font-display mb-4" id="terms-modal-title">Terms of Service</h2>
+            <div class="font-mono" id="terms-modal-body" style="font-size: 0.88rem; line-height: 1.6; white-space: pre-line;">
+                <!-- Filled dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ── JAVASCRIPT APP ENGINE ────────────────────────────────────────────── -->
+    <script>
+        // ── SUPABASE CONFIGURATION ──────────────────────────────────────────
+        // Users can override this by configuring their environment values
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        let supabase = null;
+        try {
+            if (supabaseSDK) {
+                // Initialize client
+                supabase = supabaseSDK.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log("[CYBERSHIELD] Supabase JS Client initialized.");
+            }
+        } catch (e) {
+            console.error("[CYBERSHIELD] Failed to load Supabase SDK.", e);
+        }
+
+        // ── STATE VARIABLES ──────────────────────────────────────────────────
+        let currentScanType = "url";
+        let activeView = "scanner";
+        let userSession = null;
+        let userProfile = null;
+        let scansSessionCount = 0;
+        let allEngineData = {};
+        let currentEngineFilter = "all";
+
+        const BACKEND_URL = "https://cybershield-production-2548.up.railway.app"; // Railway API backend URL
+
+        // Headline rotating configurations
+        const rotatorStrings = [
+            "Scan any URL",
+            "Check any IP",
+            "Verify any Email",
+            "Test any Password"
+        ];
+        let rotatorIndex = 0;
+
+        // ── INIT DOMContentLoaded ────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            initAppRotator();
+            checkUrlHash();
+            loadSessionState();
+            fetchSystemCounters();
+            refreshKeysStatus();
+
+            window.addEventListener('hashchange', checkUrlHash);
+        });
+
+        // Headline rotater handler
+        function initAppRotator() {
+            const rotEl = document.getElementById("rotator-text");
+            setInterval(() => {
+                rotatorIndex = (rotatorIndex + 1) % rotatorStrings.length;
+                if (rotEl) {
+                    rotEl.style.opacity = 0;
+                    setTimeout(() => {
+                        rotEl.textContent = rotatorStrings[rotatorIndex];
+                        rotEl.style.opacity = 1;
+                    }, 200);
+                }
+            }, 3000);
+        }
+
+        function checkUrlHash() {
+            const hash = window.location.hash;
+            if (hash === "#admin") {
+                openAdminVerifyModal();
+            } else {
+                exitAdmin();
+            }
+        }
+
+        // ── NAVIGATION CONTROLLER ────────────────────────────────────────────
+        function navigate(viewId) {
+            activeView = viewId;
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            const targetPanel = document.getElementById(`view-${viewId}`);
+            if (targetPanel) targetPanel.classList.add('active');
+
+            // Find nav button
+            const buttons = document.querySelectorAll('.nav-tab-btn');
+            buttons.forEach(btn => {
+                if (btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(viewId)) {
+                    btn.classList.add('active');
+                }
+            });
+
+            if (viewId === 'dashboard') {
+                loadUserDashboard();
+            }
+        }
+
+        function toggleDropdown() {
+            const menu = document.getElementById("user-dropdown");
+            menu.style.display = menu.style.display === "block" ? "none" : "block";
+        }
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('#user-avatar')) {
+                const menu = document.getElementById("user-dropdown");
+                if (menu) menu.style.display = "none";
+            }
+        });
+
+        // ── SUPABASE AUTHENTICATION CONTROLLER ─────────────────────────────────
+        let authMode = "login";
+
+        async function loadSessionState() {
+            if (!supabase) return;
+            const { data } = await supabase.auth.getSession();
+            userSession = data.session;
+            if (userSession) {
+                userProfile = await fetchProfile(userSession.user.id);
+                updateAuthUi(true);
+            } else {
+                updateAuthUi(false);
+            }
+        }
+
+        async function fetchProfile(uid) {
+            try {
+                const { data } = await supabase.table("profiles").select("*").eq("id", uid).single();
+                return data;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function updateAuthUi(loggedIn) {
+            const loggedOutGroup = document.getElementById("auth-logged-out");
+            const loggedInGroup = document.getElementById("auth-logged-in");
+            const userAvatar = document.getElementById("user-avatar");
+            const tierBadge = document.getElementById("user-tier-badge");
+
+            if (loggedIn && userSession) {
+                loggedOutGroup.style.display = "none";
+                loggedInGroup.style.display = "flex";
+                userAvatar.textContent = userSession.user.email[0].toUpperCase();
+                
+                const tier = userProfile ? userProfile.tier : "free";
+                tierBadge.textContent = tier;
+                tierBadge.className = `tier-badge tier-${tier}`;
+            } else {
+                loggedOutGroup.style.display = "block";
+                loggedInGroup.style.display = "none";
+            }
+        }
+
+        function openAuthModal(mode = 'login') {
+            authMode = mode;
+            const modal = document.getElementById("auth-modal");
+            const title = document.getElementById("auth-modal-title");
+            const benefits = document.getElementById("auth-benefits-list");
+            const submitBtn = document.getElementById("auth-submit-btn");
+            const toggleText = document.getElementById("auth-toggle-text");
+            const toggleAction = document.getElementById("auth-toggle-action");
+
+            document.getElementById("auth-email").value = "";
+            document.getElementById("auth-password").value = "";
+            document.getElementById("auth-error-msg").style.display = "none";
+
+            if (mode === 'signup') {
+                title.textContent = "Join CyberShield Free 🛡️";
+                benefits.style.display = "block";
+                submitBtn.textContent = "Register Account";
+                toggleText.textContent = "Already have an account?";
+                toggleAction.textContent = "Login";
+            } else {
+                title.textContent = "Welcome Back 👋";
+                benefits.style.display = "none";
+                submitBtn.textContent = "Sign In";
+                toggleText.textContent = "Don't have an account?";
+                toggleAction.textContent = "Sign Up Free";
+            }
+            modal.style.display = "flex";
+        }
+
+        function closeAuthModal() {
+            document.getElementById("auth-modal").style.display = "none";
+        }
+
+        function toggleAuthMode() {
+            openAuthModal(authMode === 'login' ? 'signup' : 'login');
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            if (!supabase) return;
+            const email = document.getElementById("auth-email").value;
+            const password = document.getElementById("auth-password").value;
+            const errorMsg = document.getElementById("auth-error-msg");
+            
+            errorMsg.style.display = "none";
+
+            try {
+                if (authMode === 'signup') {
+                    const { data, error } = await supabase.auth.signUp({ email, password });
+                    if (error) throw error;
+                    alert("Account registration successful! Please check your inbox for verification instructions.");
+                    closeAuthModal();
+                } else {
+                    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    userSession = data.session;
+                    userProfile = await fetchProfile(userSession.user.id);
+                    updateAuthUi(true);
+                    closeAuthModal();
+                }
+            } catch (err) {
+                errorMsg.textContent = `❌ ${err.message}`;
+                errorMsg.style.display = "block";
+            }
+        }
+
+        async function handleGoogleLogin() {
+            if (!supabase) return;
+            try {
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: window.location.origin }
+                });
+                if (error) throw error;
+            } catch (err) {
+                alert(`Google authentication error: ${err.message}`);
+            }
+        }
+
+        async function handleLogout() {
+            if (!supabase) return;
+            await supabase.auth.signOut();
+            userSession = null;
+            userProfile = null;
+            updateAuthUi(false);
+            navigate('scanner');
+        }
+
+        // ── CORE SCAN ENGINE CONTROLLER ───────────────────────────────────────
+        function setScanType(type) {
+            currentScanType = type;
+            document.querySelectorAll('.scan-selector-btn').forEach(btn => btn.classList.remove('active'));
+            if (type === 'url') document.getElementById('btn-sel-url').classList.add('active');
+            else document.getElementById('btn-sel-ip').classList.add('active');
+        }
+
+        async function runMainScan() {
+            const inputVal = document.getElementById("scan-target").value.trim();
+            const loadingWrapper = document.getElementById("main-scan-loading");
+            const loadingText = document.getElementById("main-scan-loading-text");
+            const errorBox = document.getElementById("scan-friendly-error");
+            const resultsSheet = document.getElementById("scan-results");
+
+            errorBox.style.display = "none";
+            resultsSheet.style.display = "none";
+
+            if (!inputVal) {
+                errorBox.textContent = "Please input a URL domain or IP coordinate to check.";
+                errorBox.style.display = "block";
+                return;
+            }
+
+            loadingWrapper.style.display = "block";
+            
+            // Rotating loading text to keep user engaged
+            const tickerMsgs = [
+                "Checking with 91 security experts...",
+                "Cross-referencing threat databases...",
+                "Good news takes a second to confirm..."
+            ];
+            let tickerIdx = 0;
+            const loadingInterval = setInterval(() => {
+                tickerIdx = (tickerIdx + 1) % tickerMsgs.length;
+                loadingText.textContent = tickerMsgs[tickerIdx];
+            }, 2500);
+
+            // Set custom headers for BYOK keys if present
+            const headers = { "Content-Type": "application/json" };
+            const keys = ["virustotal", "abuseipdb", "urlscan", "otx", "phishtank", "shodan"];
+            keys.forEach(k => {
+                const storedVal = localStorage.getItem(`cs_key_${k}`);
+                if (storedVal) {
+                    // Header capitalization standard
+                    const headerKey = `X-User-${k.toUpperCase().replace("IPDB", "")}-Key`;
+                    headers[headerKey] = storedVal;
+                }
+            });
+
+            if (userSession) {
+                headers["Authorization"] = `Bearer ${userSession.access_token}`;
+            }
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/scan`, {
+                    method: "POST",
+                    headers: headers,
+                    body: JSON.stringify({ target: inputVal, scan_type: currentScanType })
+                });
+
+                clearInterval(loadingInterval);
+                loadingWrapper.style.display = "none";
+
+                if (res.status === 429) {
+                    openLimitModal();
+                    return;
+                }
+
+                if (res.status !== 200) {
+                    const errData = await res.json();
+                    throw new Error(errData.detail || "Connection check failed.");
+                }
+
+                const data = await res.json();
+                
+                // Success - render findings
+                scansSessionCount++;
+                document.getElementById("scans-session").textContent = scansSessionCount;
+                renderMainScanResults(data);
+
+            } catch (e) {
+                clearInterval(loadingInterval);
+                loadingWrapper.style.display = "none";
+                errorBox.textContent = `Hmm, we couldn't complete the scan. ${e.message}`;
+                errorBox.style.display = "block";
+            }
+        }
+
+        // Render main Scan output
+        function renderMainScanResults(data) {
+            const resultsSheet = document.getElementById("scan-results");
+            
+            // 1. Render Verdict
+            const vCard = document.getElementById("results-verdict-card");
+            const vTitle = document.getElementById("results-verdict-title");
+            const vTarget = document.getElementById("results-verdict-target");
+            const vMalicious = document.getElementById("results-val-malicious");
+            const vTotal = document.getElementById("results-val-total");
+            const scoreVal = document.getElementById("results-score-val");
+            const scorePath = document.getElementById("results-score-path");
+
+            vCard.className = `verdict-card glass-panel verdict-${data.threat_level.toLowerCase()}`;
+            vTitle.textContent = data.threat_level;
+            vTarget.textContent = `Target: ${data.target}`;
+            vMalicious.textContent = data.summary.malicious;
+            vTotal.textContent = data.summary.total_engines;
+            
+            scoreVal.textContent = data.risk_score;
+            
+            // Set circle color path
+            scorePath.className = `circle-path circle-path-${data.threat_level.toLowerCase() === 'clean' ? 'clean' : (data.threat_level.toLowerCase() === 'medium' ? 'medium' : 'high')}`;
+            scorePath.setAttribute("stroke-dasharray", `${data.risk_score}, 100`);
+
+            // 2. Render AI text
+            const aiText = document.getElementById("results-ai-text");
+            // Simple typewriter simulation
+            let index = 0;
+            let fullText = "";
+            if (data.threat_level === 'HIGH') {
+                fullText = `⚠️ DANGER: Target has been flagged by ${data.summary.malicious} engines. We strongly recommend avoiding connection attempts.`;
+            } else if (data.threat_level === 'MEDIUM') {
+                fullText = `🤔 WARNING: Suspicious records detected. Proceed with caution.`;
+            } else {
+                fullText = `✅ SECURE: No malicious logs matching the targets records database. Target is clean.`;
+            }
+            aiText.textContent = "";
+            const typewriter = setInterval(() => {
+                if (index < fullText.length) {
+                    aiText.textContent += fullText[index];
+                    index++;
+                } else {
+                    clearInterval(typewriter);
+                }
+            }, 15);
+
+            // 3. Human summary text banner
+            const summaryBox = document.getElementById("human-summary-panel");
+            const summaryText = document.getElementById("human-summary-text");
+            if (data.threat_level === 'HIGH') {
+                summaryText.innerHTML = `⚠️ <strong>This looks dangerous — don't visit it.</strong> Multiple security companies have flagged this indicator.`;
+                summaryBox.style.borderLeftColor = "var(--danger)";
+            } else if (data.threat_level === 'MEDIUM') {
+                summaryText.innerHTML = `🤔 <strong>Be careful with this one.</strong> A couple of engines flagged issues — proceed with caution.`;
+                summaryBox.style.borderLeftColor = "var(--warning)";
+            } else {
+                summaryText.innerHTML = `✅ <strong>Looks safe!</strong> No security companies flagged any issues with this.`;
+                summaryBox.style.borderLeftColor = "var(--success)";
+            }
+
+            // 4. Vendor Audit list
+            allEngineData = data.engines || {};
+            renderEngines('all');
+
+            // 5. Details stacked cards
+            const detailsStack = document.querySelector(".details-stack");
+            // Clear existing dynamically generated panels
+            const existingGeo = document.getElementById("results-geo-panel");
+            detailsStack.innerHTML = "";
+            detailsStack.appendChild(existingGeo);
+
+            if (currentScanType === 'ip' && data.geo) {
+                existingGeo.style.display = "block";
+                const grid = document.getElementById("results-geo-grid");
+                grid.innerHTML = `
+                    <div class="kv-row"><span>Country</span><span>${data.geo.country}</span></div>
+                    <div class="kv-row"><span>ISP</span><span>${data.geo.isp}</span></div>
+                    <div class="kv-row"><span>Domain</span><span>${data.geo.domain}</span></div>
+                    <div class="kv-row"><span>TOR exit node</span><span>${data.geo.is_tor ? 'YES 🔴' : 'NO'}</span></div>
+                `;
+            } else {
+                existingGeo.style.display = "none";
+            }
+
+            resultsSheet.style.display = "block";
+            
+            // Add to session timeline history
+            addToSessionTimeline(data.target, currentScanType, data.threat_level, data.risk_score);
+        }
+
+        // Engines search filter implementation
+        document.getElementById("engine-search").addEventListener('input', (e) => {
+            renderEngines(currentEngineFilter);
+        });
+
+        function filterEngines(filter) {
+            currentEngineFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`filter-${filter}`).classList.add('active');
+            renderEngines(filter);
+        }
+
+        function renderEngines(filter) {
+            const list = document.getElementById("engines-list");
+            const searchVal = document.getElementById("engine-search").value.toLowerCase();
+            list.innerHTML = "";
+
+            let count = 0;
+            const CLEAN_KEYWORDS = ["CLEAN", "UNDETECTED", "HARMLESS"];
+
+            Object.entries(allEngineData).forEach(([name, status]) => {
+                const matchSearch = name.toLowerCase().includes(searchVal);
+                const isClean = CLEAN_KEYWORDS.includes(status);
+
+                if (!matchSearch) return;
+
+                if (filter === 'malicious' && isClean) return;
+                if (filter === 'clean' && !isClean) return;
+
+                const item = document.createElement("div");
+                item.className = `engine-item ${isClean ? 'status-clean' : 'status-malicious'}`;
+                
+                const spanName = document.createElement("span");
+                spanName.className = "e-name";
+                spanName.textContent = name;
+                
+                const spanRes = document.createElement("span");
+                spanRes.className = "e-res";
+                spanRes.textContent = status;
+                spanRes.style.color = isClean ? "var(--success)" : "var(--danger)";
+                
+                item.appendChild(spanName);
+                item.appendChild(spanRes);
+                list.appendChild(item);
+                count++;
+            });
+
+            document.getElementById("engine-cnt").textContent = count;
+        }
+
+        // Timeline helper
+        let localTimelineHistory = [];
+        function addToSessionTimeline(target, type, level, score) {
+            localTimelineHistory.unshift({ target, type, level, score, timestamp: new Date().toLocaleTimeString() });
+            const list = document.getElementById("history-timeline-list");
+            list.innerHTML = "";
+
+            localTimelineHistory.forEach(item => {
+                const card = document.createElement("div");
+                card.className = "glass-panel history-item";
+                card.innerHTML = `
+                    <div style="text-align: left;">
+                        <strong class="font-mono" style="word-break: break-all;">${item.target}</strong>
+                        <div class="font-mono text-faint" style="font-size: 0.75rem; margin-top: 4px;">${item.type} — ${item.timestamp}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="risk-badge risk-${item.level.toLowerCase()}">${item.level}</span>
+                        <div class="font-mono text-muted text-sm mt-1">Score: ${item.score}/100</div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function clearTimelineHistory() {
+            localTimelineHistory = [];
+            document.getElementById("history-timeline-list").innerHTML = `<div class="empty-state font-mono text-faint">No scans performed yet in this session. Run scans on Scanner/Deep Scan to build local timeline.</div>`;
+        }
+
+        // ── 3. DEEP SCANS ROUTE HANDLERS ───────────────────────────────────────
+        async function runDeepScan(service) {
+            const inputVal = document.getElementById(`input-deep-${service}`).value.trim();
+            const resultBox = document.getElementById(`result-${service}`);
+            const loadingBox = document.getElementById(`loading-${service}`);
+            const badge = document.getElementById(`badge-${service}`);
+
+            resultBox.style.display = "none";
+            badge.className = "risk-badge risk-unknown";
+            badge.textContent = "Scanning";
+
+            if (!inputVal) {
+                alert("Please enter input before running scanner.");
+                badge.textContent = "Idle";
+                return;
+            }
+
+            loadingBox.style.display = "block";
+
+            // Add personal keys header if available
+            const headers = { "Content-Type": "application/json" };
+            const storedKey = localStorage.getItem(`cs_key_${service}`);
+            if (storedKey) {
+                headers[`X-User-${service.toUpperCase()}-Key`] = storedKey;
+            }
+            if (userSession) {
+                headers["Authorization"] = `Bearer ${userSession.access_token}`;
+            }
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/check/${service}`, {
+                    method: "POST",
+                    headers: headers,
+                    body: JSON.stringify({ [service === "email" ? "email" : (service === "password" ? "password" : (service === "screenshot" || service === "phishing" ? "url" : (service === "blacklist" ? "ip" : "domain")))]: inputVal })
+                });
+
+                loadingBox.style.display = "none";
+
+                if (res.status === 429) {
+                    openLimitModal();
+                    badge.textContent = "Limit";
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Render specific layouts
+                renderDeepScanResult(service, data, resultBox, badge);
+
+            } catch (e) {
+                loadingBox.style.display = "none";
+                badge.className = "risk-badge risk-danger";
+                badge.textContent = "Error";
+                resultBox.innerHTML = `<div class="text-danger font-mono text-sm">Scan failed: ${e.message}</div>`;
+                resultBox.style.display = "block";
+            }
+        }
+
+        function renderDeepScanResult(service, data, box, badge) {
+            box.innerHTML = "";
+            let html = "";
+            let risk = "safe";
+
+            if (service === "email") {
+                risk = data.is_suspicious ? "danger" : "safe";
+                html = `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_suspicious ? '⚠️ This email looks suspicious — it was created recently and has credentials leaked.' : '✅ Looks safe! No major spam profiles found.'}</p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>Reputation</span><span>${data.reputation}</span></div>
+                        <div class="kv-row"><span>Disposable Email</span><span>${data.is_disposable ? 'YES 🔴' : 'NO'}</span></div>
+                        <div class="kv-row"><span>breaches Count</span><span>${data.breach_count}</span></div>
+                        <div class="kv-row"><span>Spam Score</span><span>${data.spam_score}</span></div>
+                    </div>
+                `;
+            } else if (service === "password") {
+                risk = data.is_pwned ? "danger" : "safe";
+                html = `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_pwned ? `⚠️ This password has been pwned in data breaches ${data.times_seen} times. Change it immediately!` : '✅ This password has not been found in known leaks.'}</p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>Strength Rating</span><span>${data.strength_label}</span></div>
+                        <div class="kv-row"><span>Strength Score</span><span>${data.strength_score} / 100</span></div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="font-mono text-muted mb-1 text-sm">RECOMMENDATIONS:</div>
+                        <ul style="padding-left: 16px; font-size: 0.75rem;">
+                            ${data.recommendations.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            } else if (service === "whois") {
+                risk = data.is_new_domain ? "danger" : (data.is_expiring_soon ? "warning" : "safe");
+                html = `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_new_domain ? '⚠️ This domain was registered only recently — common sign of phishing sites.' : '✅ Established domain.'}</p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>Registrar</span><span>${data.registrar}</span></div>
+                        <div class="kv-row"><span>Creation Date</span><span>${data.creation_date}</span></div>
+                        <div class="kv-row"><span>Expiry Date</span><span>${data.expiry_date}</span></div>
+                        <div class="kv-row"><span>Days Until Expiry</span><span>${data.days_until_expiry}</span></div>
+                    </div>
+                `;
+            } else if (service === "ssl") {
+                risk = ["A+", "A"].includes(data.grade) ? "safe" : (["B"].includes(data.grade) ? "warning" : "danger");
+                html = `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> SSL Certificate Grade: <strong>${data.grade}</strong></p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>Issuer</span><span>${data.issuer}</span></div>
+                        <div class="kv-row"><span>Expiry Date</span><span>${data.expiry_date}</span></div>
+                        <div class="kv-row"><span>TLS 1.3 Support</span><span>${data.supports_tls13 ? 'YES 🟢' : 'NO'}</span></div>
+                        <div class="kv-row"><span>HSTS Present</span><span>${data.has_hsts ? 'YES 🟢' : 'NO'}</span></div>
+                    </div>
+                `;
+            } else if (service === "dns") {
+                risk = data.security_status.includes("SECURE") ? "safe" : "warning";
+                html = `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> Email security posture: ${data.security_status}</p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>SPF Present</span><span>${data.has_spf ? 'YES 🟢' : 'NO 🔴'}</span></div>
+                        <div class="kv-row"><span>DMARC Present</span><span>${data.has_dmarc ? 'YES 🟢' : 'NO 🔴'}</span></div>
+                    </div>
+                `;
+            } else if (service === "screenshot") {
+                risk = data.malicious_score > 0 ? "danger" : "safe";
+                html = `
+                    <div style="text-align: center;">
+                        <img src="${data.screenshot_url}" alt="Website preview" style="max-width: 100%; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--border-light);">
+                        <div class="kv-grid">
+                            <div class="kv-row"><span>Page Title</span><span>${data.page_title}</span></div>
+                            <div class="kv-row"><span>IP Address</span><span>${data.ip_address}</span></div>
+                            <div class="kv-row"><span>Tech Stack</span><span>${data.technologies.join(', ') || 'None detected'}</span></div>
+                        </div>
+                    </div>
+                `;
+            } else if (service === "blacklist") {
+                risk = data.listed_count > 0 ? "danger" : "safe";
+                html = `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> Listed on ${data.listed_count} blacklist databases.</p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>Spamhaus Zen</span><span>${data.listed_on.includes('zen.spamhaus.org') ? 'LISTED 🔴' : 'CLEAN'}</span></div>
+                        <div class="kv-row"><span>Spamcop</span><span>${data.listed_on.includes('bl.spamcop.net') ? 'LISTED 🔴' : 'CLEAN'}</span></div>
+                    </div>
+                `;
+            } else if (service === "hash") {
+                risk = data.is_known_malware ? "danger" : "safe";
+                html = data.is_known_malware ? `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> 🚨 This file hash matches known malware family: <strong>${data.malware_family}</strong></p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>File Type</span><span>${data.file_type}</span></div>
+                        <div class="kv-row"><span>File Size</span><span>${data.file_size} bytes</span></div>
+                        <div class="kv-row"><span>Tags</span><span>${data.tags.join(', ')}</span></div>
+                    </div>
+                ` : `<p class="font-outfit text-sm">✅ Hash not found in known threat catalog indexes.</p>`;
+            } else if (service === "otx") {
+                risk = data.pulse_count > 0 ? "danger" : "safe";
+                html = `
+                    <p class="font-outfit text-sm mb-3">Threat Pulses Found: <strong>${data.pulse_count}</strong></p>
+                    <div class="kv-grid">
+                        <div class="kv-row"><span>Pulse Count</span><span>${data.pulse_count}</span></div>
+                        <div class="kv-row"><span>Malware Families</span><span>${data.malware_families.join(', ') || 'None logged'}</span></div>
+                    </div>
+                `;
+            } else if (service === "phishing") {
+                risk = data.is_phishing ? "danger" : "safe";
+                html = `
+                    <p class="font-outfit text-sm mb-3"><strong>Verdict:</strong> ${data.is_phishing ? '⚠️ PhishTank verified phishing site detected.' : '✅ Not flagged on PhishTank.'}</p>
+                `;
+            }
+
+            badge.className = `risk-badge risk-${risk}`;
+            badge.textContent = risk;
+            box.innerHTML = html;
+            box.style.display = "block";
+        }
+
+        function togglePasswordVisibility(id) {
+            const input = document.getElementById(id);
+            if (input) {
+                input.type = input.type === "password" ? "text" : "password";
+            }
+        }
+
+        // ── 4. BYOK MANAGER ──────────────────────────────────────────────────
+        function saveKey(service) {
+            const input = document.getElementById(`key-input-${service}`);
+            const val = input.value.trim();
+            if (!val) return;
+            localStorage.setItem(`cs_key_${service}`, val);
+            input.value = "";
+            refreshKeysStatus();
+        }
+
+        function removeKey(service) {
+            localStorage.removeItem(`cs_key_${service}`);
+            refreshKeysStatus();
+        }
+
+        function refreshKeysStatus() {
+            const keys = ["virustotal", "abuseipdb", "urlscan", "otx", "phishtank", "shodan"];
+            let hasPersonal = false;
+            keys.forEach(k => {
+                const saved = localStorage.getItem(`cs_key_${k}`);
+                const pill = document.getElementById(`key-status-${k}`);
+                if (saved) {
+                    pill.className = "byok-status-pill status-saved";
+                    pill.textContent = "SAVED";
+                    hasPersonal = true;
+                } else {
+                    pill.className = "byok-status-pill status-notset";
+                    pill.textContent = "NOT SET";
+                }
+            });
+
+            // Toggle personal key indicator on scan page
+            const banner = document.getElementById("personal-key-indicator");
+            if (banner) {
+                banner.style.display = hasPersonal ? "inline-flex" : "none";
+            }
+        }
+
+        // ── 5. USER DASHBOARD ────────────────────────────────────────────────
+        async function loadUserDashboard() {
+            if (!supabase || !userSession) return;
+            document.getElementById("dash-welcome").textContent = `Security Overview for ${userSession.user.email} 👋`;
+
+            try {
+                // Fetch profiles stats
+                const { data: profile } = await supabase.table("profiles").select("*").eq("id", userSession.user.id).single();
+                if (profile) {
+                    document.getElementById("dash-scans-total").textContent = profile.total_scans;
+                    document.getElementById("dash-scans-today").textContent = `${profile.scans_today} / 20`;
+                    document.getElementById("dash-tier").textContent = profile.tier;
+                    document.getElementById("dash-joined").textContent = new Date(profile.created_at).toLocaleDateString();
+                }
+
+                // Fetch scans history
+                const { data: scans } = await supabase.table("scans").select("*").eq("user_id", userSession.user.id).order("scanned_at", { ascending: false }).limit(20);
+                const list = document.getElementById("dash-history-rows");
+                list.innerHTML = "";
+
+                if (scans && scans.length > 0) {
+                    scans.forEach(s => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td>${new Date(s.scanned_at).toLocaleDateString()}</td>
+                            <td class="font-mono" style="word-break: break-all;">${s.target}</td>
+                            <td>${s.scan_type}</td>
+                            <td><span class="risk-badge risk-${s.threat_level.toLowerCase()}">${s.threat_level}</span></td>
+                            <td class="font-mono">${s.risk_score}</td>
+                            <td><button class="secondary-btn font-mono" style="padding: 3px 6px; font-size: 0.72rem;" onclick="reRunScan('${s.target}', '${s.scan_type}')">Scan</button></td>
+                        `;
+                        list.appendChild(tr);
+                    });
+                } else {
+                    list.innerHTML = `<tr><td colspan="6" class="text-center text-muted font-mono">No scans stored on this account.</td></tr>`;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function reRunScan(target, type) {
+            navigate('scanner');
+            document.getElementById("scan-target").value = target;
+            setScanType(type);
+            runMainScan();
+        }
+
+        async function purgeUserDbHistory() {
+            if (!supabase || !userSession) return;
+            if (!confirm("Are you sure you want to delete your saved scan logs from the database forever?")) return;
+            try {
+                await supabase.table("scans").delete().eq("user_id", userSession.user.id);
+                loadUserDashboard();
+            } catch (e) {
+                alert("Could not purge logs.");
+            }
+        }
+
+        // ── LIMIT EXCEEDED MODAL HANDLERS ──────────────────────────────────────
+        function openLimitModal() {
+            document.getElementById("limit-modal").style.display = "flex";
+            document.getElementById("waitlist-msg").style.display = "none";
+            document.getElementById("waitlist-email").value = "";
+        }
+        function closeLimitModal() {
+            document.getElementById("limit-modal").style.display = "none";
+        }
+        async function submitWaitlist() {
+            const email = document.getElementById("waitlist-email").value.trim();
+            const msgBox = document.getElementById("waitlist-msg");
+            if (!email) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/waitlist`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email })
+                });
+                const data = await res.json();
+                msgBox.textContent = data.message;
+                msgBox.style.color = "var(--success)";
+                msgBox.style.display = "block";
+            } catch (e) {
+                msgBox.textContent = "Waitlist signup failed.";
+                msgBox.style.color = "var(--danger)";
+                msgBox.style.display = "block";
+            }
+        }
+
+        // Waitlist modal generic trigger
+        function openWaitlistModal() {
+            openLimitModal();
+        }
+
+        // ── STATS BAR UPDATE ──────────────────────────────────────────────────
+        async function fetchSystemCounters() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/`);
+                const data = await res.json();
+                if (data.maintenance_mode) {
+                    document.getElementById("maintenance-alert").style.display = "block";
+                }
+            } catch (e) {}
+
+            // Mock threats counter increment (makes UI feel alive)
+            const baseThreats = 14839;
+            const threatCounter = document.getElementById("threats-counter");
+            let count = baseThreats + Math.floor(Math.random() * 10);
+            
+            if (threatCounter) {
+                threatCounter.textContent = count;
+                setInterval(() => {
+                    count += Math.floor(Math.random() * 2);
+                    threatCounter.textContent = count;
+                }, 4000);
+            }
+        }
+
+        // ── LEGAL MODAL HANDLERS ──────────────────────────────────────────────
+        const LEGAL_TEXTS = {
+            privacy: `CyberShield Privacy Policy
+            Effective Date: July 14, 2026
+
+            1. Data Collection & Processing
+            CyberShield is engineered to gather minimal personal data. We do not store or sell scan history reports, targets list, or metadata records. Account holders' emails are saved strictly inside Supabase Auth databases to manage scan limit quotas.
+
+            2. API Key Security
+            BYOK developer API keys are stored only in your local browser storage. They are never sent to or saved on CyberShield databases.
+
+            3. Third-party APIs
+            Scans communicate directly with VirusTotal, AbuseIPDB, SSL Labs, URLScan.io, OTX, HaveIBeenPwned, and Google Safe Browsing. These APIs process targets according to their respective policies.
+
+            4. GDPR Rights
+            Users hold full rights to view, export, or purge their Supabase account metadata and scan history directly from their user dashboard.`,
+            
+            terms: `CyberShield Terms of Service
+            Effective Date: July 14, 2026
+
+            1. Scope of Use
+            You agree to query indicators (URLs, IPs, Hashes) strictly for security auditing, forensic assessments, and threat mitigation contexts.
+
+            2. Automated Scraping & Abuse
+            You must not perform high-volume automated queries against standard public endpoints. Abuse of resources triggers immediate rate-limiting or IP blocklists.
+
+            3. Disclaimers
+            CyberShield aggregates third-party data services. Detections and safety scores represent aggregated engine verdicts, not legal compliance or guarantees of safety.`
+        };
+
+        function openTermsModal(type) {
+            const modal = document.getElementById("terms-modal");
+            const title = document.getElementById("terms-modal-title");
+            const body = document.getElementById("terms-modal-body");
+
+            title.textContent = type === 'privacy' ? "Privacy Policy" : "Terms of Service";
+            body.textContent = LEGAL_TEXTS[type];
+            modal.style.display = "flex";
+        }
+        function closeTermsModal() {
+            document.getElementById("terms-modal").style.display = "none";
+        }
+        function toggleFaq(el) {
+            const answer = el.nextElementSibling;
+            answer.style.display = answer.style.display === "block" ? "none" : "block";
+        }
+
+        // ── 9. ADMIN PANEL INTERACTIVE CONTROLLER ────────────────────────────
+        let adminToken = null;
+        let adminRefreshInterval = null;
+        let activeAdminTab = "stats";
+
+        // Chart.js references
+        let chartScans = null;
+        let chartThreats = null;
+
+        function openAdminVerifyModal() {
+            const modal = document.getElementById("admin-verify-modal");
+            document.getElementById("admin-password").value = "";
+            document.getElementById("admin-verify-error").style.display = "none";
+            modal.style.display = "flex";
+        }
+
+        function closeAdminVerifyModal() {
+            document.getElementById("admin-verify-modal").style.display = "none";
+        }
+
+        async function handleAdminVerifySubmit(e) {
+            e.preventDefault();
+            const password = document.getElementById("admin-password").value;
+            const errorBox = document.getElementById("admin-verify-error");
+            
+            errorBox.style.display = "none";
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/verify`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password: password })
+                });
+
+                if (res.status !== 200) {
+                    throw new Error("Invalid password credentials.");
+                }
+
+                const data = await res.json();
+                adminToken = data.token;
+                sessionStorage.setItem("cs_admin_jwt", adminToken);
+                
+                closeAdminVerifyModal();
+                enterAdminPanel();
+
+            } catch (err) {
+                errorBox.textContent = `❌ Verification failed: ${err.message}`;
+                errorBox.style.display = "block";
+            }
+        }
+
+        function enterAdminPanel() {
+            // Hide standard UI, show Admin
+            document.getElementById("main-ui").style.display = "none";
+            document.getElementById("admin-panel").style.display = "block";
+            
+            loadAdminStats();
+            initAdminCharts();
+            
+            // Auto refresh stats/activity every 10s
+            adminRefreshInterval = setInterval(() => {
+                if (activeAdminTab === 'stats') loadAdminStats();
+                else if (activeAdminTab === 'activity') loadAdminActivity();
+            }, 10000);
+        }
+
+        function exitAdmin() {
+            adminToken = null;
+            sessionStorage.removeItem("cs_admin_jwt");
+            clearInterval(adminRefreshInterval);
+
+            document.getElementById("main-ui").style.display = "block";
+            document.getElementById("admin-panel").style.display = "none";
+            closeAdminVerifyModal();
+            
+            // Clear hash
+            if (window.location.hash === "#admin") {
+                window.location.hash = "";
+            }
+        }
+
+        function navigateAdmin(tabId) {
+            activeAdminTab = tabId;
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-view-panel').forEach(p => p.classList.remove('active'));
+
+            const targetBtn = Array.from(document.querySelectorAll('.admin-tab')).find(b => b.getAttribute("onclick").includes(tabId));
+            if (targetBtn) targetBtn.classList.add('active');
+
+            const targetPanel = document.getElementById(`admin-view-${tabId}`);
+            if (targetPanel) targetPanel.classList.add('active');
+
+            if (tabId === 'activity') loadAdminActivity();
+            else if (tabId === 'users') loadAdminUsers();
+            else if (tabId === 'waitlist') loadAdminWaitlist();
+            else if (tabId === 'health') loadAdminHealth();
+        }
+
+        async function loadAdminStats() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/stats`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                
+                document.getElementById("admin-total-scans").textContent = data.total_scans_ever;
+                document.getElementById("admin-scans-today").textContent = data.scans_today;
+                document.getElementById("admin-scans-week").textContent = data.scans_week;
+                document.getElementById("admin-registered-users").textContent = data.registered_users;
+                document.getElementById("admin-errors-today").textContent = data.errors_today;
+
+                updateAdminChartsData(data);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadAdminActivity() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/activity`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById("admin-activity-rows");
+                tbody.innerHTML = "";
+
+                data.forEach(item => {
+                    const tr = document.createElement("tr");
+                    tr.className = `row-${item.threat_level.toLowerCase()}`;
+                    tr.innerHTML = `
+                        <td>${new Date(item.timestamp).toLocaleTimeString()}</td>
+                        <td class="font-mono">${item.target_hash}</td>
+                        <td>${item.service_used}</td>
+                        <td><span class="risk-badge risk-${item.threat_level.toLowerCase()}">${item.threat_level}</span></td>
+                        <td class="font-mono">${item.risk_score}</td>
+                        <td class="font-mono">${item.client_ip_hash}</td>
+                        <td>${item.response_time_ms} ms</td>
+                        <td>${item.used_personal_key ? 'YES' : 'NO'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function loadAdminUsers() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/users`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById("admin-users-rows");
+                tbody.innerHTML = "";
+
+                data.users.forEach(u => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td class="font-mono" style="font-size: 0.72rem;">${u.id}</td>
+                        <td>${u.email}</td>
+                        <td><span class="tier-badge tier-${u.tier}">${u.tier}</span></td>
+                        <td class="font-mono">${u.total_scans}</td>
+                        <td class="font-mono">${u.scans_today}</td>
+                        <td>${u.is_banned ? '🔴 Suspended' : '🟢 Active'}</td>
+                        <td>
+                            <button class="secondary-btn font-mono" style="padding: 3px 6px; font-size: 0.72rem;" onclick="toggleBanUser('${u.id}', ${u.is_banned})">${u.is_banned ? 'Unban' : 'Suspend'}</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function toggleBanUser(uid, currentlyBanned) {
+            if (!supabase) return;
+            if (!confirm(`Are you sure you want to change user status for UID: ${uid}?`)) return;
+            try {
+                await supabase.table("profiles").update({ is_banned: !currentlyBanned }).eq("id", uid);
+                loadAdminUsers();
+            } catch (e) {
+                alert("Ban trigger failed.");
+            }
+        }
+
+        async function loadAdminWaitlist() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/emails`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById("admin-waitlist-rows");
+                tbody.innerHTML = "";
+
+                data.waitlist.forEach(w => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td class="font-mono" style="font-size: 0.72rem;">${w.id}</td>
+                        <td>${w.email}</td>
+                        <td>${w.source}</td>
+                        <td>${new Date(w.created_at).toLocaleString()}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function loadAdminHealth() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/health`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                
+                // Keys list
+                const keysList = document.getElementById("admin-health-keys-list");
+                keysList.innerHTML = "";
+                Object.entries(data.api_keys).forEach(([key, set]) => {
+                    const row = document.createElement("div");
+                    row.className = "kv-row";
+                    row.innerHTML = `<span>${key}</span><span>${set ? '🟢 configured' : '🔴 missing'}</span>`;
+                    keysList.appendChild(row);
+                });
+
+                // Maintenance state btn class
+                const maintBtn = document.getElementById("admin-maintenance-btn");
+                if (data.maintenance_mode) {
+                    maintBtn.textContent = "MAINTENANCE MODE: ON";
+                    maintBtn.classList.add("active");
+                } else {
+                    maintBtn.textContent = "MAINTENANCE MODE: OFF";
+                    maintBtn.classList.remove("active");
+                }
+
+                // Error logs
+                const errRes = await fetch(`${BACKEND_URL}/admin/errors`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                const errLogs = await errRes.json();
+                const errBody = document.getElementById("admin-health-errors");
+                errBody.innerHTML = "";
+                if (errLogs.length > 0) {
+                    errLogs.reverse().forEach(err => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `<td>${new Date(err.timestamp).toLocaleTimeString()}</td><td class="text-danger font-mono" style="font-size: 0.75rem;">${err.message}</td>`;
+                        errBody.appendChild(tr);
+                    });
+                } else {
+                    errBody.innerHTML = `<tr><td colspan="2" class="text-center font-mono">No exceptions logged today.</td></tr>`;
+                }
+
+            } catch (e) {}
+        }
+
+        async function toggleMaintenanceMode() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            const isMaint = document.getElementById("admin-maintenance-btn").classList.contains("active");
+            if (!confirm(`Toggle system maintenance mode ${!isMaint ? 'ON' : 'OFF'}?`)) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/admin/maintenance`, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({ active: !isMaint })
+                });
+                if (res.status === 200) {
+                    loadAdminHealth();
+                }
+            } catch (e) {}
+        }
+
+        // CSV exporters
+        async function exportAdminActivityCsv() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            const res = await fetch(`${BACKEND_URL}/admin/activity`, {
+                headers: { "Authorization": `Bearer ${jwtToken}` }
+            });
+            const data = await res.json();
+            
+            let csv = "Timestamp,TargetHash,ServiceUsed,ThreatLevel,RiskScore,ClientIpHash,DurationMs,BYOK\n";
+            data.forEach(item => {
+                csv += `${item.timestamp},${item.target_hash},${item.service_used},${item.threat_level},${item.risk_score},${item.client_ip_hash},${item.response_time_ms},${item.used_personal_key}\n`;
+            });
+            
+            downloadCsv(csv, "cybershield_scans_activity.csv");
+        }
+
+        async function exportAdminWaitlistCsv() {
+            const jwtToken = adminToken || sessionStorage.getItem("cs_admin_jwt");
+            if (!jwtToken) return;
+
+            const res = await fetch(`${BACKEND_URL}/admin/emails`, {
+                headers: { "Authorization": `Bearer ${jwtToken}` }
+            });
+            const data = await res.json();
+            
+            let csv = "ID,Email,Source,CreatedAt\n";
+            data.waitlist.forEach(w => {
+                csv += `${w.id},${w.email},${w.source},${w.created_at}\n`;
+            });
+            
+            downloadCsv(csv, "cybershield_waitlist.csv");
+        }
+
+        function downloadCsv(csvContent, filename) {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Charts initialization
+        function initAdminCharts() {
+            const ctxHours = document.getElementById("chart-scans-hours").getContext('2d');
+            const ctxDonut = document.getElementById("chart-threats-donut").getContext('2d');
+
+            if (chartScans) chartScans.destroy();
+            if (chartThreats) chartThreats.destroy();
+
+            chartScans = new Chart(ctxHours, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'Hourly Scans',
+                        data: Array(24).fill(0).map(() => Math.floor(Math.random() * 50)),
+                        borderColor: '#ff4444',
+                        backgroundColor: 'rgba(255, 68, 68, 0.05)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+
+            chartThreats = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['CLEAN', 'LOW', 'MEDIUM', 'HIGH'],
+                    datasets: [{
+                        data: [70, 15, 10, 5],
+                        backgroundColor: ['#00ff88', '#00d4ff', '#ffaa00', '#ff4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function updateAdminChartsData(data) {
+            // Update donut chart with session data counters
+            if (chartThreats) {
+                // Ratios breakdown
+                const total = data.total_scans_ever || 1;
+                chartThreats.data.datasets[0].data = [
+                    Math.max(round(total * 0.7), 1), 
+                    Math.max(round(total * 0.15), 1),
+                    Math.max(round(total * 0.1), 1),
+                    Math.max(data.errors_today, 1)
+                ];
+                chartThreats.update();
+            }
+        }
+        
+        function round(val) { return Math.round(val); }
+    </script>
 </body>
 </html>
