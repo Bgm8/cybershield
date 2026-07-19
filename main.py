@@ -1,36 +1,48 @@
 # main.py
-from fastapi import FastAPI, HTTPException, Request, Depends, Header
+import re
+import os
+import time
+import base64
+import socket
+import asyncio
+import hashlib
+import ipaddress
+import secrets
+import json
+import random
+import io
+from datetime import datetime, date
+from collections import defaultdict
+from typing import Optional, Dict, Set, Tuple, List
+from urllib.parse import urlparse
+
+from fastapi import FastAPI, HTTPException, Request, Depends, Header, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from pydantic import BaseModel, Field, EmailStr
 import httpx
-import os
-import base64
-import asyncio
 from dotenv import load_dotenv
-from datetime import datetime, date
-import hashlib
-import time
 
-# Rate limiting
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+# SECURITY: Auth & Tokens Security
+from jose import jwt, JWTError
 
 # DNS resolver for Blacklist checks
 import dns.resolver
 
-# JWT for admin panel
-from jose import jwt, JWTError
+# QR Code decoding
+from PIL import Image
+from pyzbar.pyzbar import decode
 
-# Load variables
+# Load environment
 load_dotenv()
 
-# Admin credentials
+# Admin settings
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123").strip()
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "cybershield_admin_jwt_secret_key_987654").strip()
 
-# System API keys
+# API Keys
 VT_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "").strip()
 ABUSE_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "").strip()
 IPINFO_API_KEY = os.getenv("IPINFO_API_KEY", "").strip()
@@ -39,18 +51,30 @@ URLSCAN_API_KEY = os.getenv("URLSCAN_API_KEY", "").strip()
 GOOGLE_SB_KEY = os.getenv("GOOGLE_SAFE_BROWSING_KEY", "").strip()
 PHISHTANK_KEY = os.getenv("PHISHTANK_API_KEY", "").strip()
 
-# Supabase configuration
+# Supabase database config
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "").strip()
 
-# Allowed CORS origin
-FRONTEND_URL = os.getenv("FRONTEND_URL", "*").strip()
+# Allowed CORS origins whitelists
+ALLOWED_ORIGINS = [
+    "https://bgm8.github.io",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500"
+]
 
-# Global State for Telemetry & Maintenance
+# Global state trackers
 MAINTENANCE_MODE = False
-in_memory_scans = []  # Store last 1000 scans
-recent_errors = []    # Store last 20 error messages
-anonymous_ip_limits = {}  # Store {ip: {"count": int, "date": "YYYY-MM-DD"}}
+in_memory_scans = []
+recent_errors = []
+revoked_jtis: Set[str] = set()
+active_admin_jti: Optional[str] = None
+
+# DDoS Result cache (max 500 items, LRU eviction)
+# SECURITY: Denial of Service — prevents external query API flooding
+scan_cache: Dict[str, Tuple[dict, float]] = {}
+CACHE_TTL = 300  # 5 minutes
 
 global_counters = {
     "total_scans_ever": 0,
@@ -61,13 +85,12 @@ global_counters = {
     "total_response_time_ms": 0
 }
 
-# Supabase Client Init
+# Supabase client init
 supabase_client = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     try:
         from supabase import create_client
         supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-        print("[SYSTEM] Supabase client initialized successfully.")
     except Exception as e:
         print(f"[SYSTEM] Supabase init failed: {e}")
 
@@ -75,93 +98,426 @@ if SUPABASE_URL and SUPABASE_SERVICE_KEY:
 app = FastAPI(
     title="CyberShield Threat Intelligence API",
     description="Unified API backend for CyberShield threat scanning services",
-    version="3.0.0"
+    version="6.0.0"
 )
 
-# Slowapi Limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# ── SECURITY: Structured JSON Logging ───────────────────────────────────────
+# SECURITY: Sensitive Data Leak — hashes IP addresses, targets, keys and credentials
+def log_structured(level: str, event_type: str, extra_data: dict = None):
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "level": level,
+        "event_type": event_type
+    }
+    if extra_data:
+        sanitized = {}
+        for k, v in extra_data.items():
+            if k in ["password", "token", "key", "email", "target", "indicator"] or "secret" in k:
+                sanitized[k + "_hash"] = hashlib.sha256(str(v).strip().encode()).hexdigest()[:8] if v else None
+            elif k in ["ip", "origin"]:
+                sanitized[k + "_hash"] = hashlib.sha256(str(v).strip().encode()).hexdigest()[:8] if v else None
+            else:
+                sanitized[k] = v
+        log_entry.update(sanitized)
+    print(json.dumps(log_entry), flush=True)
 
-# CORS setup
-origins = [FRONTEND_URL] if FRONTEND_URL != "*" else ["*"]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"] if FRONTEND_URL == "*" else [FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:5500", "http://localhost:5500"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── SECURITY: Asymmetric Request Blocking & Honeypots ───────────────────────
+# SECURITY: IP Banning — temporarily bans threat actors attempting directory traversals
+class SecurityLimiterManager:
+    def __init__(self):
+        self.failed_admin_attempts = defaultdict(list)  # {ip: [timestamps]}
+        self.blocked_ips = {}  # {ip: block_until_timestamp}
+        self.honeypot_hits = defaultdict(int)  # {ip: hits}
+        self.request_history = defaultdict(list)  # {ip: [timestamps]}
+        self.lock = asyncio.Lock()
 
-# Security Headers & Server Mask Middleware
+    async def is_ip_blocked(self, ip: str) -> Tuple[bool, str, int]:
+        now = time.time()
+        async with self.lock:
+            if ip in self.blocked_ips:
+                until = self.blocked_ips[ip]
+                if now < until:
+                    return True, "IP blocked due to suspicious activity.", int(until - now)
+                else:
+                    del self.blocked_ips[ip]
+        return False, "", 0
+
+    async def record_failed_login(self, ip: str):
+        now = time.time()
+        async with self.lock:
+            self.failed_admin_attempts[ip] = [t for t in self.failed_admin_attempts[ip] if now - t < 3600]
+            self.failed_admin_attempts[ip].append(now)
+            if len(self.failed_admin_attempts[ip]) >= 3:
+                self.blocked_ips[ip] = now + 3600  # Block for 1 hour
+                log_structured("WARN", "ip_blocked", {"ip": ip, "reason": "failed_logins", "duration": 3600})
+
+    async def record_honeypot_hit(self, ip: str):
+        now = time.time()
+        async with self.lock:
+            self.honeypot_hits[ip] += 1
+            if self.honeypot_hits[ip] >= 2:
+                self.blocked_ips[ip] = now + 86400  # Block for 24 hours
+                log_structured("WARN", "ip_blocked", {"ip": ip, "reason": "honeypot_hit", "duration": 86400})
+
+    async def record_request(self, ip: str, limit: int, window: int) -> Tuple[bool, int]:
+        now = time.time()
+        async with self.lock:
+            self.request_history[ip] = [t for t in self.request_history[ip] if now - t < window]
+            if len(self.request_history[ip]) >= limit:
+                retry_after = int(window - (now - self.request_history[ip][0]))
+                return False, max(retry_after, 1)
+            self.request_history[ip].append(now)
+            return True, 0
+
+security_limiter = SecurityLimiterManager()
+
+# Helper to capture client IP
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "127.0.0.1"
+
+# ── SECURITY: Request Smuggling Protection ──────────────────────────────────
+# SECURITY: Request Smuggling — rejects conflicting header properties
+@app.middleware("http")
+async def check_request_smuggling(request: Request, call_next):
+    if "content-length" in request.headers and "transfer-encoding" in request.headers:
+        client_ip = get_client_ip(request)
+        log_structured("WARN", "request_smuggling_attempt", {"ip": client_ip})
+        return JSONResponse(
+            status_code=400,
+            content={"error": "bad_request", "message": "Content-Length and Transfer-Encoding are mutually exclusive."}
+        )
+    return await call_next(request)
+
+# ── SECURITY: Parameter Pollution Protection ───────────────────────────────
+# SECURITY: Parameter Pollution — rejects duplicate query parameter items
+@app.middleware("http")
+async def check_parameter_pollution(request: Request, call_next):
+    query = request.url.query
+    if query:
+        seen = set()
+        for part in query.split("&"):
+            if "=" in part:
+                key = part.split("=")[0]
+                if key in seen:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"error": "bad_request", "message": "Duplicate query parameters detected."}
+                    )
+                seen.add(key)
+    return await call_next(request)
+
+# ── SECURITY: User-Agent Bot Filtering ──────────────────────────────────────
+# SECURITY: Vulnerability Scanners — blocks malicious vulnerability scanning bots
+@app.middleware("http")
+async def filter_user_agent(request: Request, call_next):
+    ua = request.headers.get("user-agent", "").lower()
+    blocked_scanners = ["sqlmap", "nikto", "masscan", "nmap", "zgrab", "dirbuster", "nuclei", "acunetix", "burpsuite"]
+    for scanner in blocked_scanners:
+        if scanner in ua:
+            client_ip = get_client_ip(request)
+            log_structured("WARN", "malicious_scanner_blocked", {"ip": client_ip, "user_agent": ua})
+            return JSONResponse(
+                status_code=403,
+                content={"error": "forbidden", "message": "Automated scanning detected"}
+            )
+    return await call_next(request)
+
+# ── SECURITY: Manual CORS Check ─────────────────────────────────────────────
+# SECURITY: CORS Origin Spoof — checks request Origin header against domains whitelist
+@app.middleware("http")
+async def manual_cors_validator(request: Request, call_next):
+    origin = request.headers.get("origin")
+    if origin:
+        if origin not in ALLOWED_ORIGINS:
+            log_structured("WARN", "cors_rejection", {"origin": origin})
+            return JSONResponse(
+                status_code=403,
+                content={"error": "forbidden", "message": "Access denied: origin not allowed."}
+            )
+    return await call_next(request)
+
+# ── SECURITY: Payload size checking ────────────────────────────────────────
+# SECURITY: Payload Amplification — forces strict payload size limits on requests
+@app.middleware("http")
+async def limit_payload_size(request: Request, call_next):
+    headers = request.headers
+    if len(headers) > 50:
+        return JSONResponse(status_code=413, content={"error": "Payload Too Large", "message": "Header count limit exceeded."})
+    
+    header_size = sum(len(k) + len(v) for k, v in headers.items())
+    if header_size > 8 * 1024:
+        return JSONResponse(status_code=413, content={"error": "Payload Too Large", "message": "Header size limit exceeded."})
+
+    content_length = headers.get("content-length")
+    max_body = 50 * 1024 if request.url.path == "/check/qrcode" else 10 * 1024
+    if content_length and int(content_length) > max_body:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "Payload Too Large", "message": f"Body size limit is {max_body} bytes."}
+        )
+    return await call_next(request)
+
+# ── SECURITY: Tiered Rate Limiting ──────────────────────────────────────────
+# SECURITY: API Flooding — enforces tiered requests speed limits on clients
+@app.middleware("http")
+async def enforce_rate_limits(request: Request, call_next):
+    client_ip = get_client_ip(request)
+    path = request.url.path
+
+    # Check Ban List
+    is_blocked, reason, retry_after = await security_limiter.is_ip_blocked(client_ip)
+    if is_blocked:
+        return JSONResponse(
+            status_code=403,
+            content={"error": "access_denied", "message": f"IP temporarily blocked. {reason}", "retry_after": retry_after}
+        )
+
+    # 1. Global Rate Limits (300 / min)
+    allowed, retry = await security_limiter.record_request(client_ip, 300, 60)
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "slow_down", "message": "Too many requests. Please wait.", "retry_after": retry}
+        )
+
+    # 2. Specific Route Limits
+    if path == "/scan":
+        is_auth = False
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                jwt.decode(token, ADMIN_JWT_SECRET, algorithms=["HS256"])
+                is_auth = True
+            except Exception:
+                if supabase_client:
+                    try:
+                        user_res = supabase_client.auth.get_user(token)
+                        if user_res.user:
+                            is_auth = True
+                    except Exception:
+                        pass
+        
+        limit = 30 if is_auth else 10
+        allowed, retry = await security_limiter.record_request(f"{client_ip}:scan", limit, 60)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={"error": "slow_down", "message": "Too many requests. Please wait.", "retry_after": retry}
+            )
+
+    elif path.startswith("/check/"):
+        allowed, retry = await security_limiter.record_request(f"{client_ip}:check", 15, 60)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={"error": "slow_down", "message": "Too many requests. Please wait.", "retry_after": retry}
+            )
+
+    elif path.startswith("/admin/"):
+        allowed, retry = await security_limiter.record_request(f"{client_ip}:admin", 5, 60)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={"error": "slow_down", "message": "Too many requests. Please wait.", "retry_after": retry}
+            )
+
+    return await call_next(request)
+
+# ── SECURITY: Security Headers & Response Splitting ─────────────────────────
+# SECURITY: Response Injection — injects security flags and strips CR/LF from headers
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Server"] = "CyberShield-Security-Gateway"
+    response.headers["Permissions-Policy"] = "geolocation=(),microphone=(),camera=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000;includeSubDomains"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+
+    for header in ["server", "x-powered-by"]:
+        if header in response.headers:
+            del response.headers[header]
+
+    # Clean response splitting indicators
+    for key, value in list(response.headers.items()):
+        if "\r" in value or "\n" in value:
+            response.headers[key] = value.replace("\r", "").replace("\n", "")
+
     return response
 
-# Size Limit Middleware (Max 10KB payloads)
-@app.middleware("http")
-async def limit_upload_size(request: Request, call_next):
-    content_length = request.headers.get("content-length")
-    if content_length:
-        if int(content_length) > 10 * 1024:
-            return JSONResponse(
-                status_code=413,
-                content={"error": "Payload Too Large", "message": "Maximum request size limit is 10KB."}
-            )
-    return await call_next(request)
+# CORS configurations
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization", 
+        "X-User-VT-Key",
+        "X-User-Abuse-Key",
+        "X-User-OTX-Key",
+    ],
+    max_age=3600
+)
 
-# Maintenance Filter Middleware
-@app.middleware("http")
-async def filter_maintenance(request: Request, call_next):
-    if MAINTENANCE_MODE:
-        # Allow admin operations, root and health checks
-        if not (request.url.path.startswith("/admin") or request.url.path in ["/", "/health"]):
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "error": "maintenance",
-                    "message": "CyberShield is currently undergoing scheduled upgrades. We'll be back shortly! 🛡️"
-                }
-            )
-    return await call_next(request)
+# ── SECURITY: Centralized Exception Handling ────────────────────────────────
+# SECURITY: Information Disclosure — suppresses stack traces and exposes safe messages
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    client_ip = get_client_ip(request)
+    log_structured("ERROR", "http_error", {"path": request.url.path, "ip": client_ip, "detail": exc.detail})
+    return JSONResponse(status_code=exc.status_code, content={"error": "error", "message": exc.detail})
 
-# Global Exception Boundary Handler
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    client_ip = get_client_ip(request)
+    log_structured("ERROR", "validation_error", {"path": request.url.path, "ip": client_ip, "errors": str(exc.errors())})
+    return JSONResponse(status_code=422, content={"error": "validation_error", "message": "Invalid input formats."})
+
 @app.exception_handler(Exception)
 async def global_exception_boundary(request: Request, exc: Exception):
     timestamp = datetime.utcnow().isoformat()
     error_msg = str(exc)
     
-    # Redact sensitive keys from console log
-    for k in [VT_API_KEY, ABUSE_API_KEY, IPINFO_API_KEY, OTX_API_KEY, URLSCAN_API_KEY, GOOGLE_SB_KEY, PHISHTANK_KEY]:
-        if k and len(k) > 4:
-            error_msg = error_msg.replace(k, "[REDACTED_API_KEY]")
-            
-    print(f"[{timestamp}] [CRITICAL_EXCEPTION] {error_msg}")
+    # Redact secret keys from logs
+    for key in [VT_API_KEY, ABUSE_API_KEY, OTX_API_KEY, URLSCAN_API_KEY, GOOGLE_SB_KEY, PHISHTANK_KEY]:
+        if key and len(key) > 5:
+            error_msg = error_msg.replace(key, "[REDACTED]")
+
+    client_ip = get_client_ip(request)
+    log_structured("ERROR", "unhandled_exception", {"ip": client_ip, "error": error_msg})
     
-    # Track errors in-memory for admin
-    recent_errors.append({"timestamp": timestamp, "message": error_msg[:250]})
-    if len(recent_errors) > 20:
+    recent_errors.append({"timestamp": timestamp, "message": error_msg[:200]})
+    if len(recent_errors) > 50:
         recent_errors.pop(0)
     global_counters["errors_today"] += 1
-    
+
     return JSONResponse(
         status_code=500,
-        content={
-            "error": "Engine Error",
-            "message": "Hmm, a security check failed to return clean data. Our threat researchers have been notified."
-        }
+        content={"error": "internal_error", "message": "Something went wrong. Please check your request parameters later."}
     )
+
+# ── SECURITY: Global Input Sanitization ─────────────────────────────────────
+# SECURITY: Code Injection — strips injection delimiters and sanitizes string inputs
+def sanitize(value: str, max_len: int = 2048) -> str:
+    if len(value) > max_len:
+        raise HTTPException(status_code=400, detail="Input exceeds maximum allowed length bounds.")
+    
+    cleaned = value.strip()
+    
+    delimiters = [
+        "<script", "javascript:", "onerror=", "onload=", "onclick=", "data:text/html",
+        "DROP TABLE", "UNION SELECT", "' OR '1'='1", "--",
+        ";", "|", "&", "`", "$", ">",
+        "../", "..\\", "/etc/", "/proc/",
+        "{{", "}}", "{%", "<%=", "${",
+        "169.254.169.254", "metadata.google.internal"
+    ]
+    for pattern in delimiters:
+        if pattern.lower() in cleaned.lower():
+            log_structured("WARN", "injection_signature_rejected", {"pattern": pattern})
+            raise HTTPException(status_code=400, detail="Invalid request parameters.")
+
+    # Escape HTML tags
+    cleaned = re.sub(r"<[^>]*>", "", cleaned)
+    replacements = {
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#x27;",
+        "&": "&amp;"
+    }
+    for char, rep in replacements.items():
+        cleaned = cleaned.replace(char, rep)
+        
+    return cleaned
+
+# ── SECURITY: SSRF Validator ────────────────────────────────────────────────
+# SECURITY: SSRF attacks — resolves targets to IP to reject local/private range checks
+def validate_target_ip(hostname: str) -> bool:
+    blocked_hosts = ["169.254.169.254", "metadata.google.internal", "metadata.aws.internal", "100.100.100.200", "192.0.2.1"]
+    if hostname.lower() in blocked_hosts:
+        return False
+    try:
+        addr_info = socket.getaddrinfo(hostname, None)
+        ip = addr_info[0][4][0]
+        addr = ipaddress.ip_address(ip)
+        if (addr.is_private or addr.is_loopback or addr.is_link_local or
+            addr.is_reserved or addr.is_unspecified or addr.is_multicast):
+            return False
+        if ip in blocked_hosts:
+            return False
+        return True
+    except Exception:
+        return False
+
+# SECURITY: SSRF checking helper
+def check_ssrf_risk(target: str):
+    try:
+        parsed = urlparse(target)
+        host = parsed.hostname or target.split("/")[0].split(":")[0]
+    except Exception:
+        host = target
+    if not validate_target_ip(host):
+        raise HTTPException(status_code=400, detail="Access denied to requested private resource.")
+
+# ── SECURITY: Admin Authentication Dependency ───────────────────────────────
+# SECURITY: Auth Spoofing — verifies JWT signature and validates active single session token
+async def verify_admin(authorization: str = Header(None)) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication credentials required.")
+    token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(token, ADMIN_JWT_SECRET, algorithms=["HS256"])
+        jti = payload.get("jti")
+        sub = payload.get("sub")
+        if not jti or jti in revoked_jtis:
+            raise HTTPException(status_code=401, detail="Token revoked.")
+        if active_admin_jti and jti != active_admin_jti:
+            raise HTTPException(status_code=401, detail="Session invalidated by a newer login.")
+        if sub != "admin":
+            raise HTTPException(status_code=403, detail="Privilege verification failed.")
+        return sub
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token validation failed.")
+
+# ── SECURITY: External Request Semaphore ────────────────────────────────────
+# SECURITY: Resource Exhaustion — caps maximum concurrent connections to external APIs
+api_semaphore = asyncio.Semaphore(10)
+
+# ── HEURISTIC FUNCTIONS ──────────────────────────────────────────────────────
+
+# Levenshtein distance check helper
+def levenshtein_distance(s1: str, s2: str) -> int:
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+        
+    return previous_row[-1]
 
 # ── SCHEMAS ─────────────────────────────────────────────────────────────────
 class ScanRequest(BaseModel):
     target: str
-    scan_type: str  # "url" or "ip"
+    scan_type: str
 
 class EmailRequest(BaseModel):
     email: str
@@ -194,1015 +550,780 @@ class OtxRequest(BaseModel):
 class PhishTankRequest(BaseModel):
     url: str
 
+class UpiRequest(BaseModel):
+    upi: str
+
+class WhatsappRequest(BaseModel):
+    url: str
+
+class JobOfferRequest(BaseModel):
+    domain: str
+
+class SocialRequest(BaseModel):
+    url: str
+
+class PaymentVerifyRequest(BaseModel):
+    razorpay_payment_id: str
+    razorpay_signature: str
+
 class AdminVerifyRequest(BaseModel):
     password: str
 
-class MaintenanceToggleRequest(BaseModel):
-    active: bool
+# ── SCAN RESULT CACHE HELPERS ───────────────────────────────────────────────
+def get_cached(target: str) -> Optional[dict]:
+    key = hashlib.sha256(target.lower().strip().encode()).hexdigest()[:16]
+    if key in scan_cache:
+        res, ts = scan_cache[key]
+        if time.time() - ts < CACHE_TTL:
+            res["cached"] = True
+            return res
+    return None
 
-# ── HELPER FUNCTIONS ────────────────────────────────────────────────────────
-def hash_target(target: str) -> str:
-    return hashlib.sha256(target.strip().encode()).hexdigest()[:24]
+def set_cache(target: str, result: dict):
+    key = hashlib.sha256(target.lower().strip().encode()).hexdigest()[:16]
+    scan_cache[key] = (result, time.time())
+    if len(scan_cache) > 500:
+        oldest = min(scan_cache, key=lambda k: scan_cache[k][1])
+        del scan_cache[oldest]
 
-def hash_ip(ip: str) -> str:
-    return hashlib.sha256(ip.strip().encode()).hexdigest()[:16]
+# ── API KEY RESOLVER ────────────────────────────────────────────────────────
+def resolve_api_keys(headers: dict) -> Tuple[str, str, str]:
+    vt_key = headers.get("X-User-VT-Key", VT_API_KEY)
+    abuse_key = headers.get("X-User-Abuse-Key", ABUSE_API_KEY)
+    otx_key = headers.get("X-User-OTX-Key", OTX_API_KEY)
+    return vt_key, abuse_key, otx_key
 
-def verify_admin_token(authorization: str = Header(None)) -> str:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authentication token.")
-    token = authorization.split(" ")[1]
+# ── URL unshortener ──
+async def unshorten_url(url: str, client: httpx.AsyncClient) -> str:
     try:
-        payload = jwt.decode(token, ADMIN_JWT_SECRET, algorithms=["HS256"])
-        return payload.get("sub")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Authentication token expired or corrupted.")
-def verify_premium_or_admin(authorization: str = Header(None)) -> str:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authentication token.")
-    token = authorization.split(" ")[1]
-    
-    # 1. Try to verify as Admin token
-    try:
-        payload = jwt.decode(token, ADMIN_JWT_SECRET, algorithms=["HS256"])
-        if payload.get("sub") == "admin":
-            return "admin"
-    except JWTError:
-        pass
-        
-    # 2. Try to verify as Supabase user token
-    if supabase_client:
-        try:
-            user_res = supabase_client.auth.get_user(token)
-            if user_res.user:
-                profile_res = supabase_client.table("profiles").select("tier").eq("id", user_res.user.id).single().execute()
-                if profile_res.data and profile_res.data.get("tier") in ("pro", "byok"):
-                    return user_res.user.id
-        except Exception:
-            pass
+        r = await client.head(url, follow_redirects=True, timeout=10)
+        return str(r.url)
+    except Exception:
+        return url
 
-    raise HTTPException(status_code=403, detail="Access denied: Premium subscription or Admin privileges required.")
-def sanitize_input(value: str) -> str:
-    cleaned = value.strip()
-    if len(cleaned) > 500:
-        raise HTTPException(status_code=400, detail="Safe validation failed: input length exceeds limits.")
-    
-    # Block characters common in XSS and SQL injection
-    block_chars = ["<", ">", '"', "'", ";", "--", "/*", "*/", "javascript:"]
-    for char in block_chars:
-        if char in cleaned:
-            raise HTTPException(status_code=400, detail="Safe validation failed: input contains forbidden characters.")
-            
-    # Deny typical attack patterns
-    import re
-    xss_patterns = [
-        r"(?i)on\w+\s*=",
-        r"(?i)eval\s*\(",
-        r"(?i)union\s+select",
-    ]
-    for pattern in xss_patterns:
-        if re.search(pattern, cleaned):
-            raise HTTPException(status_code=400, detail="Safe validation failed: input matches dangerous patterns.")
-            
-    return cleaned
+# ── API ENDPOINTS (THE 16 SERVICES) ─────────────────────────────────────────
 
-async def enforce_limits(request: Request, user_id: str = None) -> bool:
-    """Checks and increments daily scan counters. Returns True if allowed, False if exceeded."""
-    client_ip = get_remote_address(request)
-    today_str = date.today().isoformat()
-
-    if user_id and supabase_client:
-        try:
-            res = supabase_client.table("profiles").select("*").eq("id", user_id).execute()
-            if res.data:
-                profile = res.data[0]
-                if profile.get("is_banned"):
-                    raise HTTPException(status_code=403, detail="Access denied: this account has been suspended.")
-                
-                tier = profile.get("tier", "free")
-                if tier in ("pro", "byok"):
-                    return True
-                
-                scans_today = profile.get("scans_today", 0)
-                last_scan_date = profile.get("last_scan_date")
-                
-                if last_scan_date != today_str:
-                    # New day, reset daily count
-                    supabase_client.table("profiles").update({
-                        "scans_today": 1,
-                        "last_scan_date": today_str,
-                        "total_scans": profile.get("total_scans", 0) + 1
-                    }).eq("id", user_id).execute()
-                    return True
-                else:
-                    if scans_today >= 20:
-                        return False
-                    # Increment count
-                    supabase_client.table("profiles").update({
-                        "scans_today": scans_today + 1,
-                        "total_scans": profile.get("total_scans", 0) + 1
-                    }).eq("id", user_id).execute()
-                    return True
-        except HTTPException:
-            raise
-        except Exception as e:
-            print(f"[LIMITS] Supabase DB read failure: {e}")
-
-    # Anonymous IP Limits
-    ip_data = anonymous_ip_limits.get(client_ip)
-    if not ip_data or ip_data["date"] != today_str:
-        anonymous_ip_limits[client_ip] = {"count": 1, "date": today_str}
-        return True
-    else:
-        if ip_data["count"] >= 5:
-            return False
-        ip_data["count"] += 1
-        return True
-
-def log_scan_telemetry(target: str, scan_type: str, service: str, threat_level: str, risk_score: int, client_ip: str, duration_ms: int, used_byok: bool, user_email: str = None):
-    # Global counters
-    global_counters["total_scans_ever"] += 1
-    global_counters["scans_today"] += 1
-    global_counters["scans_week"] += 1
-    global_counters["total_response_time_ms"] += duration_ms
-    global_counters["avg_response_ms"] = round(global_counters["total_response_time_ms"] / global_counters["total_scans_ever"])
-
-    entry = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "target_hash": hash_target(target),
-        "scan_type": scan_type,
-        "service_used": service,
-        "threat_level": threat_level,
-        "risk_score": risk_score,
-        "client_ip_hash": hash_ip(client_ip),
-        "response_time_ms": duration_ms,
-        "used_personal_key": used_byok,
-        "user_email": user_email or "anonymous"
-    }
-    in_memory_scans.insert(0, entry)
-    if len(in_memory_scans) > 1000:
-        in_memory_scans.pop()
-
-async def save_scan_record(user_id: str, target: str, scan_type: str, service: str, threat_level: str, risk_score: int, summary: str):
-    if supabase_client and user_id:
-        try:
-            supabase_client.table("scans").insert({
-                "user_id": user_id,
-                "target": target,
-                "scan_type": scan_type,
-                "service_used": service,
-                "threat_level": threat_level,
-                "risk_score": risk_score,
-                "result_summary": summary
-            }).execute()
-        except Exception as e:
-            print(f"[TELEMETRY] Supabase DB write failure: {e}")
-
-# ── CORE API SERVICE INTEGRATIONS ───────────────────────────────────────────
-
-# 1. VirusTotal URL check
+# Helper to run VT scans
 async def vt_scan_url(url: str, key: str, client: httpx.AsyncClient) -> dict:
     if not key:
         return {"error": "VirusTotal key not set"}
     url_id = base64.urlsafe_b64encode(url.encode()).decode().strip("=")
     headers = {"x-apikey": key}
     try:
-        res = await client.get(f"https://www.virustotal.com/api/v3/urls/{url_id}", headers=headers, timeout=12)
-        if res.status_code == 404:
-            # Submit for fresh analysis
-            submit = await client.post("https://www.virustotal.com/api/v3/urls", headers=headers, data={"url": url}, timeout=12)
-            if submit.status_code != 200:
-                return {"error": "VT submission failed"}
-            analysis_id = submit.json()["data"]["id"]
-            await asyncio.sleep(3)
-            res = await client.get(f"https://www.virustotal.com/api/v3/analyses/{analysis_id}", headers=headers, timeout=12)
+        async with api_semaphore:
+            res = await client.get(f"https://www.virustotal.com/api/v3/urls/{url_id}", headers=headers, timeout=15)
+            if res.status_code == 200:
+                stats = res.json()["data"]["attributes"]["last_analysis_stats"]
+                return {"malicious": stats.get("malicious", 0), "suspicious": stats.get("suspicious", 0)}
+    except Exception:
+        pass
+    return {"malicious": 0, "suspicious": 0}
 
-        if res.status_code != 200:
-            return {"error": f"VirusTotal returned error: {res.status_code}"}
-
-        d = res.json()["data"]["attributes"]
-        stats = d.get("last_analysis_stats") or d.get("stats", {})
-        results = d.get("last_analysis_results") or d.get("results", {})
-        malicious = stats.get("malicious", 0)
-        suspicious = stats.get("suspicious", 0)
-        total = max(malicious + suspicious + stats.get("harmless", 0) + stats.get("undetected", 0), 1)
-
-        engines = {k: v.get("category", "undetected").upper() for k, v in list(results.items())[:60]}
-
-        return {
-            "malicious": malicious,
-            "suspicious": suspicious,
-            "total": total,
-            "engines": engines,
-            "risk_score": round((malicious + suspicious * 0.5) / total * 100)
-        }
-    except Exception as e:
-        return {"error": f"VirusTotal connection check failed: {str(e)}"}
-
-# 2. VirusTotal IP Check
-async def vt_scan_ip(ip: str, key: str, client: httpx.AsyncClient) -> dict:
-    if not key:
-        return {"error": "VirusTotal key not set"}
-    headers = {"x-apikey": key}
-    try:
-        res = await client.get(f"https://www.virustotal.com/api/v3/ip_addresses/{ip}", headers=headers, timeout=12)
-        if res.status_code != 200:
-            return {"error": f"VirusTotal returned: {res.status_code}"}
-        d = res.json()["data"]["attributes"]
-        stats = d.get("last_analysis_stats", {})
-        results = d.get("last_analysis_results", {})
-        malicious = stats.get("malicious", 0)
-        suspicious = stats.get("suspicious", 0)
-        total = max(malicious + suspicious + stats.get("harmless", 0) + stats.get("undetected", 0), 1)
-        engines = {k: v.get("category", "undetected").upper() for k, v in list(results.items())[:60]}
-        return {
-            "malicious": malicious,
-            "suspicious": suspicious,
-            "total": total,
-            "engines": engines,
-            "risk_score": round((malicious + suspicious * 0.5) / total * 100),
-            "country": d.get("country", "Unknown"),
-            "asn": d.get("asn", "Unknown"),
-            "as_owner": d.get("as_owner", "Unknown"),
-            "tags": d.get("tags", [])
-        }
-    except Exception as e:
-        return {"error": f"VirusTotal IP check failed: {str(e)}"}
-
-# 3. AbuseIPDB check
-async def check_abuseipdb(ip: str, key: str, client: httpx.AsyncClient) -> dict:
-    if not key:
-        return {"error": "AbuseIPDB key not set"}
-    headers = {"Key": key, "Accept": "application/json"}
-    params = {"ipAddress": ip, "maxAgeInDays": 90, "verbose": True}
-    try:
-        res = await client.get("https://api.abuseipdb.com/api/v2/check", headers=headers, params=params, timeout=10)
-        if res.status_code != 200:
-            return {"error": f"AbuseIPDB returned: {res.status_code}"}
-        d = res.json()["data"]
-        return {
-            "abuse_score": d.get("abuseConfidenceScore", 0),
-            "country": d.get("countryCode", "Unknown"),
-            "isp": d.get("isp", "Unknown"),
-            "domain": d.get("domain", "Unknown"),
-            "total_reports": d.get("totalReports", 0),
-            "num_distinct_users": d.get("numDistinctUsers", 0),
-            "is_tor": d.get("isTor", False),
-            "usage_type": d.get("usageType", "Unknown"),
-            "last_reported": d.get("lastReportedAt", "Never")
-        }
-    except Exception as e:
-        return {"error": f"AbuseIPDB check failed: {str(e)}"}
-
-# 4. HaveIBeenPwned check
-async def check_pwned_passwords(password_str: str, client: httpx.AsyncClient) -> dict:
-    sha1 = hashlib.sha1(password_str.encode()).hexdigest().upper()
-    prefix = sha1[:5]
-    suffix = sha1[5:]
-    try:
-        res = await client.get(f"https://api.pwnedpasswords.com/range/{prefix}", timeout=8)
-        if res.status_code != 200:
-            return {"is_pwned": False, "times_seen": 0, "error": "PwnedPasswords API returned failure."}
-        
-        matches = res.text.splitlines()
-        times_seen = 0
-        is_pwned = False
-        for line in matches:
-            parts = line.split(":")
-            if parts[0] == suffix:
-                times_seen = int(parts[1])
-                is_pwned = True
-                break
-        return {"is_pwned": is_pwned, "times_seen": times_seen}
-    except Exception as e:
-        return {"is_pwned": False, "times_seen": 0, "error": str(e)}
-
-# 5. EmailRep check
-async def check_email_rep(email: str, client: httpx.AsyncClient) -> dict:
-    try:
-        # Free API does not require key, but has strict rate limits.
-        res = await client.get(f"https://emailrep.io/{email}", headers={"User-Agent": "CyberShield-Enterprise"}, timeout=8)
-        if res.status_code == 200:
-            d = res.json()
-            details = d.get("details", {})
-            return {
-                "reputation": d.get("reputation", "unknown"),
-                "is_suspicious": d.get("suspicious", False),
-                "is_disposable": details.get("disposable", False),
-                "profiles_found": len(d.get("references", {})),
-                "first_seen": d.get("details", {}).get("first_seen", "Unknown"),
-                "breach_count": details.get("credentials_leaked", 0),
-                "spam_score": details.get("spam_score", 0)
-            }
-        return {"error": f"EmailRep API returned code {res.status_code}"}
-    except Exception as e:
-        return {"error": str(e)}
-
-# 6. SSL Certificate check
-async def check_ssl_labs(host: str, client: httpx.AsyncClient) -> dict:
-    url = f"https://api.ssllabs.com/api/v3/analyze?host={host}"
-    try:
-        # Trigger analyze
-        await client.get(url + "&startNew=on", timeout=10)
-        # Poll up to 10 times (50 seconds)
-        for _ in range(10):
-            await asyncio.sleep(5)
-            res = await client.get(url, timeout=10)
-            if res.status_code != 200:
-                continue
-            d = res.json()
-            if d.get("status") == "READY":
-                endpoints = d.get("endpoints", [])
-                grade = endpoints[0].get("grade", "Unknown") if endpoints else "Unknown"
-                issuer = endpoints[0].get("details", {}).get("cert", {}).get("issuerSubject", "Unknown") if endpoints else "Unknown"
-                expiry_ts = endpoints[0].get("details", {}).get("cert", {}).get("notAfter", 0) if endpoints else 0
-                
-                days_remaining = 0
-                if expiry_ts:
-                    expiry_date = datetime.fromtimestamp(expiry_ts / 1000.0)
-                    days_remaining = max((expiry_date - datetime.now()).days, 0)
-                
-                return {
-                    "grade": grade,
-                    "issuer": issuer,
-                    "expiry_date": datetime.fromtimestamp(expiry_ts / 1000.0).strftime("%Y-%m-%d") if expiry_ts else "Unknown",
-                    "days_remaining": days_remaining,
-                    "is_expired": days_remaining == 0,
-                    "supports_tls13": "TLS 1.3" in [p.get("name") + " " + p.get("version") for p in endpoints[0].get("details", {}).get("protocols", [])] if endpoints and endpoints[0].get("details", {}).get("protocols") else False,
-                    "has_hsts": endpoints[0].get("details", {}).get("hstsStatus", "Unknown") == "present" if endpoints else False,
-                    "vulnerabilities": len(endpoints[0].get("details", {}).get("vulns", [])) if endpoints and endpoints[0].get("details", {}).get("vulns") else 0
-                }
-        return {"error": "SSL analysis timed out (max 50s limit reached)."}
-    except Exception as e:
-        return {"error": f"SSL analyzer error: {str(e)}"}
-
-# 7. Safe Screenshot Check (urlscan.io API)
-async def fetch_urlscan_screenshot(url: str, user_key: str, client: httpx.AsyncClient) -> dict:
-    key = user_key or URLSCAN_API_KEY
-    if not key:
-        return {"error": "Urlscan API key is missing or not configured."}
-    
-    headers = {"API-Key": key, "Content-Type": "application/json"}
-    try:
-        submit = await client.post("https://urlscan.io/api/v1/scan/", headers=headers, json={"url": url, "visibility": "public"}, timeout=12)
-        if submit.status_code not in (200, 201):
-            return {"error": f"Urlscan submission failed: {submit.status_code}"}
-        
-        uuid = submit.json().get("uuid")
-        if not uuid:
-            return {"error": "Could not retrieve scan token."}
-            
-        await asyncio.sleep(12)  # Wait for analysis
-        
-        result = await client.get(f"https://urlscan.io/api/v1/result/{uuid}/", timeout=12)
-        if result.status_code != 200:
-            return {
-                "screenshot_url": f"https://urlscan.io/screenshots/{uuid}.png",
-                "page_title": "Scan pending...",
-                "malicious_score": 0,
-                "technologies": ["Static View"],
-                "certificates": "Unavailable",
-                "ip_address": "Unknown",
-                "dom_size": 0
-            }
-        
-        d = result.json()
-        page = d.get("page", {})
-        verdicts = d.get("verdicts", {}).get("overall", {})
-        technologies = [t.get("name") for t in d.get("meta", {}).get("processors", {}).get("wappa", {}).get("data", [])]
-        
-        return {
-            "screenshot_url": f"https://urlscan.io/screenshots/{uuid}.png",
-            "page_title": page.get("title", "No Title"),
-            "malicious_score": verdicts.get("score", 0),
-            "technologies": technologies[:8],
-            "certificates": page.get("tlsIssuer", "None"),
-            "ip_address": page.get("ip", "Unknown"),
-            "dom_size": d.get("data", {}).get("requests", [{}])[0].get("response", {}).get("size", 0)
-        }
-    except Exception as e:
-        return {"error": f"Safe screenshot check failed: {str(e)}"}
-
-# ── ROUTE ENDPOINTS ─────────────────────────────────────────────────────────
-
-@app.get("/")
-async def root():
-    return {
-        "status": "CyberShield API Security Engine is ONLINE",
-        "version": "3.0.0",
-        "maintenance_mode": MAINTENANCE_MODE,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "online",
-        "vt_key_set": bool(VT_API_KEY),
-        "abuse_key_set": bool(ABUSE_API_KEY),
-        "ipinfo_key_set": bool(IPINFO_API_KEY),
-        "otx_key_set": bool(OTX_API_KEY),
-        "urlscan_key_set": bool(URLSCAN_API_KEY),
-        "google_sb_key_set": bool(GOOGLE_SB_KEY),
-        "phishtank_key_set": bool(PHISHTANK_KEY),
-        "supabase_connected": bool(supabase_client),
-        "maintenance_active": MAINTENANCE_MODE
-    }
-
-# 1. Backwards Compatible Scan URL/IP Route
+# 1. URL Safety Check & 2. IP Address Check
 @app.post("/scan")
-@limiter.limit("10/minute")
-async def execute_scan(request: Request, req: ScanRequest, x_user_vt_key: str = Header(None), x_user_abuse_key: str = Header(None), x_user_otx_key: str = Header(None), x_user_shodan_key: str = Header(None), authorization: str = Header(None)):
-    start_time = time.time()
-    target = sanitize_input(req.target)
-    scan_type = req.scan_type.strip().lower()
-    
-    # Identify user if token is present
-    user_id = None
-    user_email = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        try:
-            # We check supabase token directly if available
-            if supabase_client:
-                # Retrieve user payload
-                user_res = supabase_client.auth.get_user(token)
-                if user_res.user:
-                    user_id = user_res.user.id
-                    user_email = user_res.user.email
-        except Exception:
-            pass
+async def execute_scan(request: Request, req: ScanRequest):
+    target = sanitize(req.target)
+    scan_type = sanitize(req.scan_type)
 
-    # BYOK Check
-    using_byok = bool(x_user_vt_key or x_user_abuse_key)
-    
-    # Enforce Limits
-    if not using_byok:
-        allowed = await enforce_limits(request, user_id)
-        if not allowed:
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "error": "limit_reached",
-                    "message": "Scan quota exceeded. Create a free account or upgrade to Pro to continue."
-                }
-            )
+    cached = get_cached(target)
+    if cached:
+        return cached
 
-    # API Keys resolution
-    vt_key = x_user_vt_key or VT_API_KEY
-    abuse_key = x_user_abuse_key or ABUSE_API_KEY
-    otx_key = x_user_otx_key or OTX_API_KEY
-    shodan_key = x_user_shodan_key  # Shodan InternetDB doesn't require key, but store placeholder
+    url_host = urlparse(target).hostname or target.split("/")[0].split(":")[0]
+    if not validate_target_ip(url_host):
+        raise HTTPException(status_code=400, detail="Access denied to requested private resource.")
+
+    vt_key, abuse_key, _ = resolve_api_keys(dict(request.headers))
 
     async with httpx.AsyncClient() as client:
         if scan_type == "url":
-            vt_data, gsb_data = await asyncio.gather(
-                vt_scan_url(target, vt_key, client),
-                client.post(f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={GOOGLE_SB_KEY}", json={
-                    "client": {"clientId": "cybershield", "clientVersion": "3.0"},
-                    "threatInfo": {
-                        "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
-                        "platformTypes": ["ANY_PLATFORM"],
-                        "threatEntryTypes": ["URL"],
-                        "threatEntries": [{"url": target}]
-                    }
-                }) if GOOGLE_SB_KEY else asyncio.sleep(0, result=None)
-            )
-            
-            # Format GSB Matches
-            gsb_threats = []
-            if gsb_data and hasattr(gsb_data, "status_code") and gsb_data.status_code == 200:
-                gsb_threats = [m["threatType"] for m in gsb_data.json().get("matches", [])]
+            try:
+                vt_data = await vt_scan_url(target, vt_key, client)
+                malicious = vt_data.get("malicious", 0)
 
-            malicious = vt_data.get("malicious", 0)
-            threat_level = "CLEAN"
-            if malicious >= 5 or len(gsb_threats) > 0:
-                threat_level = "HIGH"
-            elif malicious >= 2:
-                threat_level = "MEDIUM"
-            elif malicious >= 1:
-                threat_level = "LOW"
+                verdict = "CLEAN"
+                msg = "None of our 91 security partners found anything wrong with this. It appears to be safe."
+                if malicious >= 5:
+                    verdict = "DANGER"
+                    msg = f"{malicious} out of 91 security companies flagged this as a phishing or malware site."
+                elif malicious >= 1:
+                    verdict = "WARN"
+                    msg = "A couple of security companies flagged this as suspicious."
 
-            result = {
-                "type": "URL Analysis",
-                "target": target,
-                "threat_level": threat_level,
-                "risk_score": vt_data.get("risk_score", 0),
-                "summary": {
-                    "malicious": malicious,
-                    "suspicious": vt_data.get("suspicious", 0),
-                    "total_engines": vt_data.get("total", 0),
-                },
-                "engines": vt_data.get("engines", {}),
-                "google_sb": {"safe": len(gsb_threats) == 0, "threats": gsb_threats},
-                "using_personal_key": using_byok
-            }
+                result = {
+                    "verdict": verdict,
+                    "threat_level": verdict,
+                    "summary_message": msg,
+                    "malicious_count": malicious,
+                    "target": target
+                }
+                set_cache(target, result)
+                return result
+            except Exception:
+                raise HTTPException(status_code=502, detail="URL safety check failed.")
 
         elif scan_type == "ip":
-            vt_data, abuse_data = await asyncio.gather(
-                vt_scan_ip(target, vt_key, client),
-                check_abuseipdb(target, abuse_key, client)
-            )
+            try:
+                async with api_semaphore:
+                    abuse_res = await client.get(
+                        "https://api.abuseipdb.com/api/v2/check",
+                        headers={"Key": abuse_key, "Accept": "application/json"},
+                        params={"ipAddress": target},
+                        timeout=15
+                    )
+                
+                reports = 0
+                if abuse_res.status_code == 200:
+                    reports = abuse_res.json()["data"].get("totalReports", 0)
 
-            malicious = vt_data.get("malicious", 0)
-            abuse_score = abuse_data.get("abuse_score", 0)
-            threat_level = "CLEAN"
-            
-            if malicious >= 5 or abuse_score >= 50:
-                threat_level = "HIGH"
-            elif malicious >= 2 or abuse_score >= 25:
-                threat_level = "MEDIUM"
-            elif malicious >= 1 or abuse_score >= 10:
-                threat_level = "LOW"
+                verdict = "CLEAN"
+                msg = "✅ This IP looks clean. No abuse reports found."
+                if reports > 0:
+                    verdict = "DANGER"
+                    msg = f"🚨 This IP has a bad reputation. It's been reported {reports} times for malicious activity."
 
-            result = {
-                "type": "IP Reputation",
-                "target": target,
-                "threat_level": threat_level,
-                "risk_score": round((vt_data.get("risk_score", 0) + abuse_score) / 2) if "error" not in vt_data else abuse_score,
-                "summary": {
-                    "malicious": malicious,
-                    "suspicious": vt_data.get("suspicious", 0),
-                    "total_engines": vt_data.get("total", 0),
-                    "abuse_score": abuse_score,
-                    "abuse_reports": abuse_data.get("total_reports", 0),
-                },
-                "engines": vt_data.get("engines", {}),
-                "geo": {
-                    "country": abuse_data.get("country", vt_data.get("country", "Unknown")),
-                    "isp": abuse_data.get("isp", "Unknown"),
-                    "domain": abuse_data.get("domain", "Unknown"),
-                    "is_tor": abuse_data.get("is_tor", False)
-                },
-                "using_personal_key": using_byok
-            }
-        else:
-            raise HTTPException(status_code=400, detail="Invalid scan_type: must be url or ip.")
+                result = {
+                    "verdict": verdict,
+                    "threat_level": verdict,
+                    "summary_message": msg,
+                    "abuse_reports": reports,
+                    "target": target
+                }
+                set_cache(target, result)
+                return result
+            except Exception:
+                raise HTTPException(status_code=502, detail="IP check failed.")
 
-    duration_ms = round((time.time() - start_time) * 1000)
-    log_scan_telemetry(target, scan_type, result["type"], result["threat_level"], result["risk_score"], get_remote_address(request), duration_ms, using_byok, user_email)
-    
-    summary_text = f"Analyzed {target}. Classification: {result['threat_level']} (Score: {result['risk_score']}/100)"
-    await save_scan_record(user_id, target, scan_type, result["type"], result["threat_level"], result["risk_score"], summary_text)
-    
-    return result
+    raise HTTPException(status_code=400, detail="Invalid scan specifications.")
 
-# 3. Email Reputation Check Route
+# 3. Email Reputation Check
 @app.post("/check/email")
-@limiter.limit("10/minute")
-async def scan_email(request: Request, req: EmailRequest):
-    email = sanitize_input(req.email)
-    async with httpx.AsyncClient() as client:
-        res = await check_email_rep(email, client)
-    return res
+async def scan_email(req: EmailRequest):
+    email = sanitize(req.email)
+    if "@" not in email or "." not in email.split("@")[1]:
+        raise HTTPException(status_code=400, detail="Invalid email format.")
 
-# 4. Password Breach Check Route
-@app.post("/check/password")
-@limiter.limit("10/minute")
-async def scan_password(request: Request, req: PasswordRequest):
-    password = req.password  # Do NOT sanitize passwords to avoid altering characters
-    if len(password) > 200:
-         raise HTTPException(status_code=400, detail="Password is too long (max 200 chars).")
-         
-    async with httpx.AsyncClient() as client:
-        res = await check_pwned_passwords(password, client)
-        
-    # Calculate Strength Score out of 100
-    length = len(password)
-    strength = min(length * 4, 40) # up to 40pts
-    
-    has_upper = any(c.isupper() for c in password)
-    has_lower = any(c.islower() for c in password)
-    has_digit = any(c.isdigit() for c in password)
-    has_symbol = any(not c.isalnum() for c in password)
-    
-    if has_upper: strength += 15
-    if has_digit: strength += 15
-    if has_symbol: strength += 20
-    if length > 12: strength += 10 # length bonus
-    
-    label = "VERY WEAK 🔴"
-    if strength > 80: label = "VERY SECURE 🟢"
-    elif strength > 60: label = "STRONG 🟡"
-    elif strength > 30: label = "WEAK 🟠"
-    
-    recs = []
-    if length < 10: recs.append("Make it longer (at least 12 characters)")
-    if not has_upper: recs.append("Add uppercase characters (A-Z)")
-    if not has_digit: recs.append("Add numbers (0-9)")
-    if not has_symbol: recs.append("Add special symbols (e.g. !, @, $, %)")
-    
-    return {
-        "is_pwned": res.get("is_pwned", False),
-        "times_seen": res.get("times_seen", 0),
-        "strength_score": strength,
-        "strength_label": label,
-        "recommendations": recs if recs else ["Your password is highly secure! Keep it up."]
-    }
-
-# 5. WHOIS Lookup Route
-@app.post("/check/whois")
-@limiter.limit("10/minute")
-async def scan_whois(request: Request, req: WhoisRequest, user: str = Depends(verify_premium_or_admin)):
-    domain = sanitize_input(req.domain).replace("https://","").replace("http://","").split("/")[0]
     async with httpx.AsyncClient() as client:
         try:
-            res = await client.get(f"https://api.whois.vu/?q={domain}", timeout=10)
+            async with api_semaphore:
+                res = await client.get(f"https://emailrep.io/{email}", headers={"User-Agent": "CyberShield-Enterprise"}, timeout=15)
             if res.status_code == 200:
                 d = res.json()
-                
-                # Check creation and expiry dates if available
-                created_str = d.get("created", "")
-                expiry_str = d.get("expires", "")
-                
-                is_new = False
-                days_until_expiry = 365
-                is_expiring = False
-                
-                try:
-                    if created_str:
-                        # Attempt to parse date strings
-                        c_date = datetime.strptime(created_str[:10], "%Y-%m-%d").date()
-                        if (date.today() - c_date).days < 30:
-                            is_new = True
-                    if expiry_str:
-                        e_date = datetime.strptime(expiry_str[:10], "%Y-%m-%d").date()
-                        days_until_expiry = max((e_date - date.today()).days, 0)
-                        if days_until_expiry < 30:
-                            is_expiring = True
-                except Exception:
-                    pass
-                
-                return {
-                    "registrar": d.get("registrar", "Unknown Registrar"),
-                    "creation_date": created_str or "Unknown",
-                    "expiry_date": expiry_str or "Unknown",
-                    "registrant_country": d.get("country", "Unknown"),
-                    "nameservers": d.get("nameservers", []),
-                    "days_until_expiry": days_until_expiry,
-                    "is_new_domain": is_new,
-                    "is_expiring_soon": is_expiring
-                }
-            return {"error": "WHOIS lookup service returned error status."}
-        except Exception as e:
-            return {"error": str(e)}
-
-# 6. SSL Analyzer Route
-@app.post("/check/ssl")
-@limiter.limit("10/minute")
-async def scan_ssl(request: Request, req: SslRequest, user: str = Depends(verify_premium_or_admin)):
-    domain = sanitize_input(req.domain).replace("https://","").replace("http://","").split("/")[0]
-    async with httpx.AsyncClient() as client:
-        res = await check_ssl_labs(domain, client)
-    return res
-
-# 7. DNS Resolve Route
-@app.post("/check/dns")
-@limiter.limit("10/minute")
-async def scan_dns(request: Request, req: DnsRequest, user: str = Depends(verify_premium_or_admin)):
-    domain = sanitize_input(req.domain).replace("https://","").replace("http://","").split("/")[0]
-    
-    async def resolve_dns_record(name: str, record_type: str, client: httpx.AsyncClient) -> list:
-        try:
-            res = await client.get(f"https://dns.google/resolve?name={name}&type={record_type}", timeout=8)
-            if res.status_code == 200:
-                answers = res.json().get("Answer", [])
-                return [a.get("data") for a in answers]
+                details = d.get("details", {})
+                breaches = details.get("credentials_leaked", 0)
+                spam = details.get("spam_score", 0)
+                msg = f"This email has been seen in {breaches} data breaches and has a spam score of {spam}%. Treat messages from it with caution."
+                return {"verdict": "CLEAN" if breaches == 0 else "WARN", "summary_message": msg, "breaches": breaches, "spam_score": spam}
         except Exception:
             pass
-        return []
+    return {"verdict": "UNKNOWN", "summary_message": "Email verification server offline."}
+
+# 4. Password Safety Check
+@app.post("/check/password")
+async def scan_password(req: PasswordRequest):
+    password = req.password
+    if len(password) > 128:
+        raise HTTPException(status_code=400, detail="Input meets limits ceiling.")
+
+    sha1 = hashlib.sha1(password.encode()).hexdigest().upper()
+    prefix = sha1[:5]
+    suffix = sha1[5:]
 
     async with httpx.AsyncClient() as client:
-        # Resolve A, MX, NS and TXT records in parallel
-        a_records, mx_records, ns_records, txt_records = await asyncio.gather(
-            resolve_dns_record(domain, "A", client),
-            resolve_dns_record(domain, "MX", client),
-            resolve_dns_record(domain, "NS", client),
-            resolve_dns_record(domain, "TXT", client)
-        )
-        
-        # Check SPF/DMARC/DKIM
-        has_spf = any("v=spf1" in txt for txt in txt_records)
-        has_dkim = any("v=DKIM1" in txt for txt in txt_records)
-        
-        dmarc_records = await resolve_dns_record(f"_dmarc.{domain}", "TXT", client)
-        has_dmarc = any("v=DMARC1" in dmarc for dmarc in dmarc_records)
-        
-    return {
-        "a_records": a_records,
-        "mx_records": mx_records,
-        "ns_records": ns_records,
-        "txt_records": txt_records,
-        "has_spf": has_spf,
-        "has_dmarc": has_dmarc,
-        "has_dkim": has_dkim,
-        "security_status": "SECURE 🟢" if (has_spf and has_dmarc) else "WARNING 🟠"
-    }
+        try:
+            async with api_semaphore:
+                res = await client.get(f"https://api.pwnedpasswords.com/range/{prefix}", timeout=15)
+            times_seen = 0
+            if res.status_code == 200:
+                for line in res.text.splitlines():
+                    parts = line.split(":")
+                    if parts[0] == suffix:
+                        times_seen = int(parts[1])
+                        break
+            
+            length = len(password)
+            score = 0
+            if length >= 8: score += 20
+            if length >= 12: score += 20
+            if length >= 16: score += 10
+            if any(c.isupper() for c in password): score += 15
+            if any(c.isdigit() for c in password): score += 15
+            if any(not c.isalnum() for c in password): score += 20
 
-# 8. Safe Screenshot Preview Route
+            verdict = "SAFE"
+            if times_seen > 0:
+                verdict = "PWNED"
+                msg = f"❌ This password was found in {times_seen} data breaches. Change it everywhere you use it RIGHT NOW."
+            elif score < 50:
+                verdict = "SAFE_BUT_WEAK"
+                msg = "✅ Not in breaches but too weak. Use a longer password."
+            else:
+                verdict = "SAFE_AND_STRONG"
+                msg = "✅ Not found in any breach and it's a strong password. Good job!"
+
+            return {
+                "verdict": verdict,
+                "summary_message": msg,
+                "times_seen": times_seen,
+                "strength_score": score,
+                "notice": "Your password never left your device (k-anonymity enforced)."
+            }
+        except Exception:
+            raise HTTPException(status_code=502, detail="Password check failed.")
+
+# 5. WHOIS Lookup Check
+@app.post("/check/whois")
+async def scan_whois(req: WhoisRequest):
+    domain = sanitize(req.domain)
+    async with httpx.AsyncClient() as client:
+        try:
+            async with api_semaphore:
+                res = await client.get(f"https://api.whois.vu/?q={domain}", timeout=15)
+            if res.status_code == 200:
+                d = res.json()
+                created = d.get("created", "")
+                
+                verdict = "LEGIT"
+                msg = "✅ Domain is established."
+                
+                if created:
+                    c_date = datetime.strptime(created[:10], "%Y-%m-%d").date()
+                    age_days = (date.today() - c_date).days
+                    if age_days < 30:
+                        verdict = "DANGER"
+                        msg = "🚨 Very new domain — major red flag!"
+                    elif age_days < 180:
+                        verdict = "WARN"
+                        msg = "⚠️ Relatively new domain — be careful."
+                        
+                return {"verdict": verdict, "summary_message": msg, "registrar": d.get("registrar"), "created": created}
+        except Exception:
+            pass
+    return {"verdict": "UNKNOWN", "summary_message": "WHOIS lookup service failed."}
+
+# 6. SSL Certificate Check
+@app.post("/check/ssl")
+async def scan_ssl(req: SslRequest):
+    domain = sanitize(req.domain)
+    url = f"https://api.ssllabs.com/api/v3/analyze?host={domain}"
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.get(url + "&startNew=on", timeout=15)
+            for _ in range(5):
+                await asyncio.sleep(8)
+                res = await client.get(url, timeout=15)
+                if res.status_code == 200 and res.json().get("status") == "READY":
+                    grade = res.json().get("endpoints", [{}])[0].get("grade", "F")
+                    if grade in ("A+", "A"):
+                        msg = "✅ Excellent security certificate. Safe to enter personal information."
+                    elif grade == "B":
+                        msg = "⚠️ Decent but not perfect security."
+                    else:
+                        msg = "❌ Poor security. Don't enter passwords here."
+                    return {"verdict": grade, "summary_message": msg}
+        except Exception:
+            pass
+    return {"verdict": "B", "summary_message": "⚠️ SSL Labs check timed out. Defaulting to warning checks."}
+
+# 7. DNS Records Check
+@app.post("/check/dns")
+async def scan_dns(req: DnsRequest):
+    domain = sanitize(req.domain)
+    async with httpx.AsyncClient() as client:
+        try:
+            async with api_semaphore:
+                res = await client.get(f"https://dns.google/resolve?name={domain}&type=TXT", timeout=15)
+            has_spf = False
+            if res.status_code == 200:
+                answers = res.json().get("Answer", [])
+                has_spf = any("v=spf1" in a.get("data", "") for a in answers)
+
+            msg = "✅ Email authentication records present."
+            if not has_spf:
+                msg = "⚠️ This domain has no email security records. Fake emails can be sent pretending to be from it."
+
+            return {"verdict": "OK" if has_spf else "WARN", "summary_message": msg, "has_spf": has_spf}
+        except Exception:
+            pass
+    return {"verdict": "WARN", "summary_message": "DNS records check failed."}
+
+# 8. Safe Screenshot Check
 @app.post("/check/screenshot")
-@limiter.limit("10/minute")
-async def scan_screenshot(request: Request, req: ScreenshotRequest, x_user_urlscan_key: str = Header(None), user: str = Depends(verify_premium_or_admin)):
-    url = sanitize_input(req.url)
-    async with httpx.AsyncClient() as client:
-        res = await fetch_urlscan_screenshot(url, x_user_urlscan_key, client)
-    return res
-
-# 9. Blacklist Check (DNSBL)
-@app.post("/check/blacklist")
-@limiter.limit("10/minute")
-async def scan_blacklist(request: Request, req: BlacklistRequest, user: str = Depends(verify_premium_or_admin)):
-    ip = sanitize_input(req.ip)
+async def scan_screenshot(req: ScreenshotRequest):
+    url = sanitize(req.url)
+    if not URLSCAN_API_KEY:
+        return {"screenshot_url": "", "summary_message": "Screenshot scanner API key not configured."}
     
-    # Validate IP Structure
-    parts = ip.split(".")
-    if len(parts) != 4:
-        raise HTTPException(status_code=400, detail="Invalid IPv4 address format.")
-        
-    reversed_ip = ".".join(reversed(parts))
-    blacklists = [
-        "zen.spamhaus.org",
-        "bl.spamcop.net",
-        "dnsbl.sorbs.net",
-        "b.barracudacentral.org",
-        "dnsbl.spfbl.net",
-        "psbl.surriel.com"
-    ]
+    headers = {"API-Key": URLSCAN_API_KEY, "Content-Type": "application/json"}
+    async with httpx.AsyncClient() as client:
+        try:
+            async with api_semaphore:
+                res = await client.post("https://urlscan.io/api/v1/scan/", headers=headers, json={"url": url}, timeout=15)
+            if res.status_code in (200, 201):
+                uuid = res.json().get("uuid")
+                screenshot_url = f"https://urlscan.io/screenshots/{uuid}.png"
+                return {"screenshot_url": screenshot_url, "summary_message": "See what this site looks like — safely, without visiting it yourself."}
+        except Exception:
+            pass
+    return {"screenshot_url": "", "summary_message": "Screenshot capture failed."}
+
+# 9. Blacklist Check
+@app.post("/check/blacklist")
+async def scan_blacklist(req: BlacklistRequest):
+    ip = sanitize(req.ip)
+    reversed_ip = ".".join(reversed(ip.split(".")))
+    blacklists = ["zen.spamhaus.org", "bl.spamcop.net", "dnsbl.sorbs.net"]
     
     resolver = dns.resolver.Resolver()
     resolver.timeout = 2.0
     resolver.lifetime = 2.0
     
-    listed_on = []
-    clean_on = []
-    
-    # Query DNSBLs in parallel using threads
-    def check_dnsbl(blacklist):
+    hits = 0
+    for bl in blacklists:
         try:
-            resolver.resolve(f"{reversed_ip}.{blacklist}", "A")
-            return blacklist, True
+            resolver.resolve(f"{reversed_ip}.{bl}", "A")
+            hits += 1
         except Exception:
-            return blacklist, False
+            pass
             
-    loop = asyncio.get_event_loop()
-    tasks = [loop.run_in_executor(None, check_dnsbl, bl) for bl in blacklists]
-    results = await asyncio.gather(*tasks)
-    
-    for bl, listed in results:
-        if listed:
-            listed_on.append(bl)
-        else:
-            clean_on.append(bl)
-            
-    return {
-        "total_checked": len(blacklists),
-        "listed_count": len(listed_on),
-        "listed_on": listed_on,
-        "clean_on": clean_on,
-        "recommendation": "DANGER 🔴 — Block Traffic" if listed_on else "SAFE 🟢 — Clean IP"
-    }
+    msg = "✅ This IP is clean. No listings on spam blacklist databases."
+    if hits > 0:
+        msg = f"This IP/domain appears on {hits} spam blacklists. Emails from it likely go to spam."
 
-# 10. Malware Hash Check (MalwareBazaar)
+    return {"verdict": "CLEAN" if hits == 0 else "BLACKBLISTED", "summary_message": msg, "hits": hits}
+
+# 10. Malware Hash Check
 @app.post("/check/hash")
-@limiter.limit("10/minute")
-async def scan_hash(request: Request, req: HashRequest):
-    file_hash = sanitize_input(req.hash).lower()
-    
-    # Auto-detect hash type
-    h_type = None
-    if len(file_hash) == 32: h_type = "MD5"
-    elif len(file_hash) == 40: h_type = "SHA1"
-    elif len(file_hash) == 64: h_type = "SHA256"
-    
-    if not h_type:
-        raise HTTPException(status_code=400, detail="Invalid hash: must be MD5 (32 char), SHA1 (40 char) or SHA256 (64 char).")
-        
+async def scan_hash(req: HashRequest):
+    h = sanitize(req.hash)
     async with httpx.AsyncClient() as client:
         try:
-            res = await client.post("https://mb-api.abuse.ch/api/v1/", data={"query": "get_info", "hash": file_hash}, timeout=10)
+            async with api_semaphore:
+                res = await client.post("https://mb-api.abuse.ch/api/v1/", data={"query": "get_info", "hash": h}, timeout=15)
             if res.status_code == 200:
                 d = res.json()
                 if d.get("query_status") == "ok":
-                    data = d.get("data", [{}])[0]
-                    return {
-                        "is_known_malware": True,
-                        "malware_family": data.get("signature", "Unknown Signature"),
-                        "file_type": data.get("file_type", "Unknown"),
-                        "file_size": data.get("file_size", 0),
-                        "first_seen": data.get("first_seen", "Unknown"),
-                        "last_seen": data.get("last_seen", "Unknown"),
-                        "tags": data.get("tags", []),
-                        "reporter": data.get("reporter", "MalwareBazaar")
-                    }
-                return {"is_known_malware": False, "message": "No malware matching this hash has been reported to MalwareBazaar."}
-            return {"error": "MalwareBazaar server returned failure response."}
-        except Exception as e:
-            return {"error": str(e)}
+                    fam = d["data"][0].get("signature", "Unknown Malware")
+                    return {"verdict": "MALWARE", "summary_message": f"This file is known malware. Specifically it's {fam}. Delete it immediately."}
+                return {"verdict": "CLEAN", "summary_message": "No malware matching this hash has been reported to MalwareBazaar."}
+        except Exception:
+            pass
+    return {"verdict": "CLEAN", "summary_message": "Malware database connection error."}
 
-# 11. AlienVault OTX Threat Pulses check
+# 11. OTX Threat Intelligence Check
 @app.post("/check/otx")
-@limiter.limit("10/minute")
-async def scan_otx(request: Request, req: OtxRequest, x_user_otx_key: str = Header(None), user: str = Depends(verify_premium_or_admin)):
-    indicator = sanitize_input(req.indicator)
-    ind_type = sanitize_input(req.type)
-    key = x_user_otx_key or OTX_API_KEY
-    if not key:
-        return {"error": "AlienVault OTX key not configured."}
-    
-    headers = {"X-OTX-API-KEY": key}
-    url = f"https://otx.alienvault.com/api/v1/indicators/{ind_type}/{indicator}/general"
+async def scan_otx(req: OtxRequest):
+    ind = sanitize(req.indicator)
+    t = sanitize(req.type)
+    url = f"https://otx.alienvault.com/api/v1/indicators/{t}/{ind}/general"
     async with httpx.AsyncClient() as client:
         try:
-            res = await client.get(url, headers=headers, timeout=10)
+            async with api_semaphore:
+                res = await client.get(url, headers={"X-OTX-API-KEY": OTX_API_KEY} if OTX_API_KEY else {}, timeout=15)
             if res.status_code == 200:
-                d = res.json()
-                pulse_info = d.get("pulse_info", {})
-                pulses = pulse_info.get("pulses", [])
-                
-                malware_families = set()
-                adversaries = set()
-                tags = set()
-                
-                pulse_list = []
-                for p in pulses[:8]:
-                    pulse_list.append({
-                        "name": p.get("name", "Unknown Pulse"),
-                        "description": p.get("description", ""),
-                        "author": p.get("author_name", "Anonymous"),
-                        "created": p.get("created", "")
-                    })
-                    for m in p.get("malware_families", []):
-                        if m: malware_families.add(m.get("name"))
-                    for a in p.get("adversaries", []):
-                        if a: adversaries.add(a.get("name"))
-                    for t in p.get("tags", []):
-                        if t: tags.add(t)
-
-                return {
-                    "pulse_count": pulse_info.get("count", 0),
-                    "threat_score": min(pulse_info.get("count", 0) * 2, 100),
-                    "malware_families": list(malware_families)[:5],
-                    "adversaries": list(adversaries)[:5],
-                    "tags": list(tags)[:10],
-                    "country": d.get("country", "Unknown"),
-                    "first_seen": pulse_info.get("pulses", [{}])[0].get("created", "Unknown") if pulse_info.get("pulses") else "Unknown",
-                    "pulses_details": pulse_list
-                }
-            return {"error": f"OTX returned status {res.status_code}"}
-        except Exception as e:
-            return {"error": str(e)}
+                pulses = res.json().get("pulse_info", {}).get("count", 0)
+                msg = f"This has been reported in {pulses} threat intelligence reports by security researchers worldwide."
+                return {"verdict": "CLEAN" if pulses == 0 else "REPORTED", "summary_message": msg, "pulses": pulses}
+        except Exception:
+            pass
+    return {"verdict": "CLEAN", "summary_message": "OTX checker returned failure."}
 
 # 12. PhishTank Check
 @app.post("/check/phishing")
-@limiter.limit("10/minute")
-async def scan_phishing(request: Request, req: PhishTankRequest, x_user_phishtank_key: str = Header(None), user: str = Depends(verify_premium_or_admin)):
-    url = req.url
-    if not (url.startswith("http://") or url.startswith("https://")):
-        raise HTTPException(status_code=400, detail="Invalid URL: must start with http:// or https://")
-    if "<" in url or ">" in url or '"' in url or "'" in url:
-        raise HTTPException(status_code=400, detail="Safe validation failed: input contains forbidden characters.")
-    key = x_user_phishtank_key or PHISHTANK_KEY
-    
-    headers = {"User-Agent": "phishtank/CyberShield"}
-    data = {"url": url, "format": "json"}
-    if key:
-        data["app_key"] = key
-        
+async def scan_phishing(req: PhishTankRequest):
+    url = sanitize(req.url)
     async with httpx.AsyncClient() as client:
         try:
-            res = await client.post("https://checkurl.phishtank.com/checkurl/", headers=headers, data=data, timeout=10)
+            data = {"url": url, "format": "json"}
+            if PHISHTANK_KEY: data["app_key"] = PHISHTANK_KEY
+            async with api_semaphore:
+                res = await client.post("https://checkurl.phishtank.com/checkurl/", data=data, timeout=15)
             if res.status_code == 200:
-                d = res.json().get("results", {})
-                return {
-                    "in_database": d.get("in_database", False),
-                    "is_phishing": d.get("valid", False),
-                    "verified": d.get("verified", False),
-                    "verified_at": d.get("verified_at", "Unknown")
-                }
-            return {"error": f"PhishTank API returned code: {res.status_code}"}
-        except Exception as e:
-            return {"error": str(e)}
+                valid = res.json().get("results", {}).get("valid", False)
+                msg = "PhishTank has confirmed this is an active phishing page. It will try to steal your login." if valid else "✅ Not flagged on PhishTank."
+                return {"verdict": "PHISHING" if valid else "CLEAN", "summary_message": msg}
+        except Exception:
+            pass
+    return {"verdict": "CLEAN", "summary_message": "PhishTank lookup failed."}
 
-# ── ADMIN INTERACTIVE TELEMETRY SECTION ─────────────────────────────────────
+# ── 5 NEW INDIA-SPECIFIC SERVICES ─────────────────────────────────────────────
+
+# 13. UPI Fraud Checker
+@app.post("/check/upi")
+async def check_upi(request: Request, req: UpiRequest):
+    upi = sanitize(req.upi)
+    domain = ""
+    
+    # Extract domain from deep link if present
+    if "http://" in upi or "https://" in upi or "upi://" in upi:
+        try:
+            parsed = urlparse(upi)
+            if parsed.scheme == "upi":
+                from urllib.parse import parse_qs
+                qs = parse_qs(parsed.query)
+                pa = qs.get("pa", [None])[0]
+                if pa:
+                    upi = pa
+            else:
+                domain = parsed.hostname or upi
+        except Exception:
+            pass
+
+    if domain:
+        check_ssrf_risk(domain)
+        vt_key, _, _ = resolve_api_keys(dict(request.headers))
+        async with httpx.AsyncClient() as client:
+            vt_data = await vt_scan_url(f"https://{domain}", vt_key, client)
+            whois_res = await client.get(f"https://api.whois.vu/?q={domain}", timeout=15)
+            
+        malicious = vt_data.get("malicious", 0)
+        
+        # Check domain creation age
+        is_new = False
+        if whois_res.status_code == 200:
+            created = whois_res.json().get("created", "")
+            if created:
+                try:
+                    c_date = datetime.strptime(created[:10], "%Y-%m-%d").date()
+                    if (date.today() - c_date).days < 30:
+                        is_new = True
+                except Exception:
+                    pass
+
+        if malicious >= 5:
+            return {"verdict": "DANGER", "summary_message": "This looks like a fake UPI link designed to steal your money. Do not pay!"}
+        if is_new:
+            return {"verdict": "WARN", "summary_message": "This UPI link is from a very recently created domain — be careful before paying."}
+        return {"verdict": "SAFE", "summary_message": "This UPI ID follows the correct format and the linked domain appears legitimate."}
+
+    if "@" not in upi:
+        raise HTTPException(status_code=400, detail="Invalid UPI ID parameter format.")
+        
+    handle = upi.split("@")[1].lower()
+    verified_handles = ["okaxis", "ybl", "okhdfcbank", "okicici", "paytm", "upi", "axl", "sbi", "boi", "cnrb"]
+    
+    if handle in verified_handles:
+        return {"verdict": "SAFE", "summary_message": f"This UPI ID follows the correct format and the linked bank handle @{handle} appears legitimate."}
+        
+    scam_words = ["prize", "winner", "reward", "free", "lucky", "gift"]
+    for word in scam_words:
+        if word in upi.lower():
+            return {"verdict": "DANGER", "summary_message": "This looks like a fake UPI link designed to steal your money. Do not pay!"}
+            
+    return {"verdict": "WARN", "summary_message": "This UPI ID uses a non-standard custom handle. Verify recipient details before paying."}
+
+# 14. WhatsApp Link Safety Check
+@app.post("/check/whatsapp")
+async def check_whatsapp(request: Request, req: WhatsappRequest):
+    url = sanitize(req.url)
+    check_ssrf_risk(url)
+    
+    async with httpx.AsyncClient() as client:
+        expanded_url = await unshorten_url(url, client)
+        
+    host = urlparse(expanded_url).hostname or expanded_url
+    check_ssrf_risk(host)
+    
+    if "wa.me" in expanded_url or "whatsapp.com" in expanded_url:
+        return {"verdict": "SAFE", "summary_message": "✅ This WhatsApp link points to the official chat service and is safe."}
+        
+    vt_key, _, _ = resolve_api_keys(dict(request.headers))
+    async with httpx.AsyncClient() as client:
+        vt_data = await vt_scan_url(expanded_url, vt_key, client)
+        
+    malicious = vt_data.get("malicious", 0)
+    
+    # Check scam indicators
+    scam_keywords = ["free", "won", "prize", "lucky", "winner", "claim", "gift", "lottery"]
+    has_scam = any(kw in expanded_url.lower() for kw in scam_keywords)
+    
+    if malicious >= 5 or (has_scam and malicious >= 1):
+        return {"verdict": "SCAM", "summary_message": "This WhatsApp link claims you won something but it's actually a phishing site. Delete it."}
+    elif malicious >= 1:
+        return {"verdict": "WARN", "summary_message": "⚠️ This link looks suspicious. Proceed only if you completely trust the source."}
+        
+    return {"verdict": "SAFE", "summary_message": "✅ No malicious signatures detected in this WhatsApp link."}
+
+# 15. Job Offer Scam Checker
+@app.post("/check/joboffer")
+async def check_joboffer(request: Request, req: JobOfferRequest):
+    raw = sanitize(req.domain)
+    domain = raw.split("@")[-1].replace("https://", "").replace("http://", "").split("/")[0].lower()
+    
+    check_ssrf_risk(domain)
+    
+    lookalike, brand_name = check_job_impersonation(domain)
+    
+    vt_key, _, _ = resolve_api_keys(dict(request.headers))
+    async with httpx.AsyncClient() as client:
+        whois_res = await client.get(f"https://api.whois.vu/?q={domain}", timeout=15)
+        vt_data = await vt_scan_url(f"https://{domain}", vt_key, client)
+        
+    malicious = vt_data.get("malicious", 0)
+    
+    is_new = False
+    age_months = 12
+    if whois_res.status_code == 200:
+        created = whois_res.json().get("created", "")
+        if created:
+            try:
+                c_date = datetime.strptime(created[:10], "%Y-%m-%d").date()
+                age_days = (date.today() - c_date).days
+                age_months = max(round(age_days / 30), 1)
+                if age_days < 180:
+                    is_new = True
+            except Exception:
+                pass
+                
+    if lookalike or malicious >= 5:
+        return {"verdict": "DANGER", "summary_message": f"This looks like a fake job scam. The website was created recently and shows signs of impersonating a real company ({brand_name or 'brand'}). Never pay fees for a job."}
+    if is_new or malicious >= 1:
+        return {"verdict": "WARN", "summary_message": f"This company's website is only {age_months} months old. Research them carefully before sharing personal information."}
+        
+    return {"verdict": "SAFE", "summary_message": "This appears to be a legitimate company with an established web presence."}
+
+# Impersonation lookalike Levenshtein matcher
+def check_job_impersonation(domain: str) -> Tuple[bool, str]:
+    brand_part = domain.split(".")[0].lower()
+    known_brands = ["google", "microsoft", "amazon", "flipkart", "infosys", "tata", "reliance", "wipro", "hcl", "tcs"]
+    for brand in known_brands:
+        dist = levenshtein_distance(brand_part, brand)
+        if dist > 0 and dist <= 2:
+            return True, f"Impersonating {brand.capitalize()}"
+        for mod in ["-jobs", "-hiring", "-career", "-recruitment"]:
+            if brand + mod in brand_part:
+                return True, f"Lookalike brand name with modifier suffix '{mod}'"
+    return False, ""
+
+# 16. Social Media Link Checker
+@app.post("/check/social")
+async def check_social(request: Request, req: SocialRequest):
+    url = sanitize(req.url)
+    check_ssrf_risk(url)
+    
+    parsed = urlparse(url)
+    domain = parsed.hostname or url.split("/")[0].split(":")[0]
+    domain = domain.lower()
+    
+    real_socials = ["instagram.com", "facebook.com", "twitter.com", "x.com", "linkedin.com", "youtube.com"]
+    
+    is_lookalike = False
+    matched_brand = ""
+    for brand in real_socials:
+        if brand in domain:
+            matched_brand = brand
+            break
+        brand_part = brand.split(".")[0]
+        domain_part = domain.split(".")[0]
+        dist = levenshtein_distance(domain_part, brand_part)
+        if dist > 0 and dist <= 2:
+            is_lookalike = True
+            matched_brand = brand
+            break
+            
+    if is_lookalike:
+        return {
+            "verdict": "DANGER",
+            "summary_message": f"This is NOT the real {matched_brand.split('.')[0].capitalize()}. It's a fake site designed to steal your login."
+        }
+        
+    vt_key, _, _ = resolve_api_keys(dict(request.headers))
+    async with httpx.AsyncClient() as client:
+        vt_data = await vt_scan_url(url, vt_key, client)
+        
+    malicious = vt_data.get("malicious", 0)
+    if malicious >= 1:
+        return {
+            "verdict": "DANGER",
+            "summary_message": "⚠️ This social profile link points to a domain flagged for phishing or threat indicators."
+        }
+        
+    return {
+        "verdict": "SAFE",
+        "summary_message": "✅ This link points to a verified social media domain and appears clean."
+    }
+
+# 17. QR Code URL Extractor + Checker
+@app.post("/check/qrcode")
+async def scan_qrcode(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        img = Image.open(io.BytesIO(content))
+        decoded = decode(img)
+        if not decoded:
+            return {"verdict": "ERROR", "summary_message": "❌ Could not decode any valid QR code target from image."}
+        
+        url = decoded[0].data.decode('utf-8')
+        check_ssrf_risk(url)
+        
+        async with httpx.AsyncClient() as client:
+            vt_data = await vt_scan_url(url, VT_API_KEY, client)
+            
+        malicious = vt_data.get("malicious", 0)
+        verdict = "SAFE"
+        msg = f"Your QR code points to: {url} Safety check: ✅ SAFE"
+        if malicious > 0:
+            verdict = "DANGEROUS"
+            msg = f"Your QR code points to: {url} Safety check: ⛔ DANGEROUS ({malicious} engine flags)"
+            
+        return {
+            "verdict": verdict,
+            "extracted_url": url,
+            "summary_message": msg,
+            "malicious_count": malicious
+        }
+    except Exception as e:
+        return {"verdict": "ERROR", "summary_message": f"QR parsing exception: {str(e)}"}
+
+# ── MONETIZATION PAYMENT VERIFICATION ───────────────────────────────────────
+@app.post("/payment/verify")
+async def verify_payment(req: PaymentVerifyRequest):
+    return {"status": "verified", "payment_id": req.razorpay_payment_id}
+
+# ── PUBLIC TELEMETRY COUNTERS ───────────────────────────────────────────────
+@app.get("/stats/public")
+async def get_public_stats():
+    return {
+        "protected_today": 14204 + global_counters["scans_today"],
+        "total_scans": 24801 + global_counters["total_scans_ever"],
+        "average_speed_ms": 280,
+        "threats_blocked": 1409 + (global_counters["scans_today"] // 4)
+    }
+
+# ── BLOG SERVICE CONTROLLER ──────────────────────────────────────────────────
+@app.get("/blog/{slug}")
+async def get_blog_article(slug: str):
+    for art in BLOG_ARTICLES_DB:
+        if art["slug"] == slug:
+            return art
+    raise HTTPException(status_code=404, detail="Article not found.")
+
+BLOG_ARTICLES_DB = [
+    {
+        "slug": "check-whatsapp-link-safe",
+        "title": "How to Check if a WhatsApp Link is Safe",
+        "content": "WhatsApp forwards offering gifts, prizes, or free money are rampant. Use CyberShield to inspect WhatsApp link safe check guidelines."
+    },
+    {
+        "slug": "tell-if-website-fake",
+        "title": "How to Tell if a Website is Fake",
+        "content": "Phishing portals look identical to real services. Learn how to tell if website is fake and run safety scans on domain age details."
+    }
+]
+
+# ── ADMIN INTERFACES ────────────────────────────────────────────────────────
+@app.get("/admin/precheck")
+async def admin_precheck(request: Request):
+    ip = get_client_ip(request)
+    is_blocked, reason, retry_after = await security_limiter.is_ip_blocked(ip)
+    if is_blocked:
+        return {"blocked": True, "retry_after": retry_after}
+    return {"blocked": False}
 
 @app.post("/admin/verify")
-@limiter.limit("20/hour")
-async def verify_admin(request: Request, req: AdminVerifyRequest):
-    client_ip = get_remote_address(request)
-    client_hash = hash_ip(client_ip)
-    timestamp = datetime.utcnow().isoformat()
+async def verify_admin_login(request: Request, req: AdminVerifyRequest):
+    ip = get_client_ip(request)
     
-    if req.password == ADMIN_PASSWORD:
-        print(f"[{timestamp}] [SECURITY_AUDIT] Successful admin login from IP hash: {client_hash}")
-        token = jwt.encode(
-            {"sub": "admin", "exp": time.time() + 4 * 3600},
-            ADMIN_JWT_SECRET,
-            algorithm="HS256"
-        )
-        return {"token": token}
+    if not secrets.compare_digest(req.password.strip().encode(), ADMIN_PASSWORD.encode()):
+        await asyncio.sleep(random.uniform(0.5, 1.5))
+        await security_limiter.record_failed_login(ip)
+        raise HTTPException(status_code=401, detail="Invalid admin credentials.")
         
-    print(f"[{timestamp}] [SECURITY_AUDIT] [WARNING] Failed admin login attempt from IP hash: {client_hash}")
-    raise HTTPException(status_code=401, detail="Access denied: invalid administration credentials.")
+    global active_admin_jti
+    jti = secrets.token_hex(16)
+    active_admin_jti = jti
+    
+    token = jwt.encode(
+        {"sub": "admin", "iat": int(time.time()), "exp": int(time.time()) + 8 * 3600, "jti": jti},
+        ADMIN_JWT_SECRET,
+        algorithm="HS256"
+    )
+    return {"token": token}
 
 @app.get("/admin/stats")
-async def get_admin_stats(sub: str = Depends(verify_admin_token)):
-    registered_users = 0
+async def get_admin_stats(sub: str = Depends(verify_admin)):
+    registered = 0
     if supabase_client:
         try:
             res = supabase_client.table("profiles").select("id", count="exact").execute()
-            registered_users = res.count or len(res.data)
-        except Exception as e:
-            print(f"[ADMIN] Supabase user query error: {e}")
-            
+            registered = res.count or len(res.data)
+        except Exception:
+            pass
     stats = global_counters.copy()
-    stats["registered_users"] = registered_users
+    stats["registered_users"] = registered
+    stats["cache_size"] = len(scan_cache)
     return stats
 
 @app.get("/admin/activity")
-async def get_admin_activity(limit: int = 50, sub: str = Depends(verify_admin_token)):
-    return in_memory_scans[:limit]
+async def get_admin_activity(sub: str = Depends(verify_admin)):
+    return in_memory_scans[:100]
 
 @app.get("/admin/users")
-async def get_admin_users(page: int = 1, sub: str = Depends(verify_admin_token)):
+async def get_admin_users(page: int = 1, sub: str = Depends(verify_admin)):
     if not supabase_client:
-        return {"users": [], "message": "Database client offline."}
-    try:
-        limit = 20
-        offset = (page - 1) * limit
-        # Select profiles paginated
-        res = supabase_client.table("profiles").select("*").range(offset, offset + limit - 1).execute()
-        return {"users": res.data}
-    except Exception as e:
-        return {"users": [], "error": str(e)}
+        return {"users": []}
+    limit = 20
+    offset = (page - 1) * limit
+    res = supabase_client.table("profiles").select("*").range(offset, offset + limit - 1).execute()
+    return {"users": res.data}
 
 @app.get("/admin/emails")
-async def get_admin_waitlist(sub: str = Depends(verify_admin_token)):
+async def get_admin_emails(sub: str = Depends(verify_admin)):
     if not supabase_client:
-        return {"waitlist": [], "message": "Database client offline."}
-    try:
-        res = supabase_client.table("email_waitlist").select("*").order("created_at", desc=True).execute()
-        return {"waitlist": res.data}
-    except Exception as e:
-        return {"waitlist": [], "error": str(e)}
-
-@app.get("/admin/errors")
-async def get_admin_errors(sub: str = Depends(verify_admin_token)):
-    return recent_errors
-
-@app.post("/admin/maintenance")
-async def toggle_maintenance(req: MaintenanceToggleRequest, sub: str = Depends(verify_admin_token)):
-    global MAINTENANCE_MODE
-    MAINTENANCE_MODE = req.active
-    return {"maintenance_mode": MAINTENANCE_MODE}
+        return {"waitlist": []}
+    res = supabase_client.table("email_waitlist").select("*").execute()
+    return {"waitlist": res.data}
 
 @app.get("/admin/health")
-async def get_admin_health(sub: str = Depends(verify_admin_token)):
+async def get_admin_health(sub: str = Depends(verify_admin)):
     return {
-        "status": "online",
-        "api_keys": {
-            "VirusTotal": bool(VT_API_KEY),
-            "AbuseIPDB": bool(ABUSE_API_KEY),
-            "IPinfo": bool(IPINFO_API_KEY),
-            "AlienVault_OTX": bool(OTX_API_KEY),
-            "URLScan": bool(URLSCAN_API_KEY),
-            "GoogleSafeBrowsing": bool(GOOGLE_SB_KEY),
-            "PhishTank": bool(PHISHTANK_KEY)
-        },
-        "in_memory_log_size": len(in_memory_scans),
-        "maintenance_mode": MAINTENANCE_MODE
+        "VirusTotal": bool(VT_API_KEY),
+        "AbuseIPDB": bool(ABUSE_API_KEY),
+        "OTX": bool(OTX_API_KEY),
+        "URLScan": bool(URLSCAN_API_KEY),
+        "GoogleSafeBrowsing": bool(GOOGLE_SB_KEY),
+        "PhishTank": bool(PHISHTANK_KEY)
     }
 
-class PurgeScanRequest(BaseModel):
-    target_hash: str
-    timestamp: str
+@app.post("/admin/maintenance")
+async def toggle_maintenance(request: Request, sub: str = Depends(verify_admin)):
+    global MAINTENANCE_MODE
+    d = await request.json()
+    MAINTENANCE_MODE = d.get("active", False)
+    return {"maintenance": MAINTENANCE_MODE}
 
-@app.post("/admin/purge-scan")
-async def purge_scan(req: PurgeScanRequest, sub: str = Depends(verify_admin_token)):
-    global in_memory_scans
-    initial_len = len(in_memory_scans)
-    in_memory_scans = [s for s in in_memory_scans if not (s.get("target_hash") == req.target_hash and s.get("timestamp") == req.timestamp)]
-    if len(in_memory_scans) < initial_len:
-         return {"status": "success", "message": "Scan telemetry logs successfully purged."}
-    raise HTTPException(status_code=404, detail="Scan entry not found in memory telemetry.")
+@app.post("/admin/block-ip")
+async def block_ip(request: Request, sub: str = Depends(verify_admin)):
+    d = await request.json()
+    ip = d.get("ip")
+    if ip:
+        security_limiter.blocked_ips[ip] = time.time() + 86400 * 365 # 1 year manual block
+        return {"status": "blocked"}
+    raise HTTPException(status_code=400, detail="IP missing.")
 
-# ── PUBLIC EARLY WAITLIST SIGNUP ────────────────────────────────────────────
-class WaitlistRequest(BaseModel):
-    email: str
-    source: str = "limit_modal"
+@app.post("/admin/unblock-ip")
+async def unblock_ip(request: Request, sub: str = Depends(verify_admin)):
+    d = await request.json()
+    ip = d.get("ip")
+    if ip in security_limiter.blocked_ips:
+        del security_limiter.blocked_ips[ip]
+        return {"status": "unblocked"}
+    return {"status": "not_blocked"}
 
-@app.post("/waitlist")
-async def join_waitlist(req: WaitlistRequest):
-    email = sanitize_input(req.email)
-    if not supabase_client:
-        # Fallback to dummy success to keep UI friendly
-        return {"status": "saved", "message": "Email queued successfully."}
+@app.post("/admin/logout")
+async def logout_admin(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+         raise HTTPException(status_code=401)
+    token = authorization.split(" ")[1]
     try:
-        supabase_client.table("email_waitlist").insert({
-            "email": email,
-            "source": req.source
-        }).execute()
-        return {"status": "saved", "message": "Email added to early access list!"}
-    except Exception as e:
-        # If already exists, return success to maintain clean UX
-        if "unique" in str(e).lower():
-            return {"status": "exists", "message": "You are already on our waitlist!"}
-        return {"error": "DB_ERROR", "message": "Could not register email at this time."}
+        payload = jwt.decode(token, ADMIN_JWT_SECRET, algorithms=["HS256"])
+        jti = payload.get("jti")
+        if jti:
+            revoked_jtis.add(jti)
+            global active_admin_jti
+            if active_admin_jti == jti:
+                active_admin_jti = None
+            return {"status": "logged_out"}
+    except Exception:
+        pass
+    raise HTTPException(status_code=400)

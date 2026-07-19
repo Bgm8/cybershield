@@ -1,111 +1,84 @@
-# CyberShield AI Setup and Deployment Guide
+# CyberShield Deployment and Configuration Setup Guide
 
-This guide walks you through the step-by-step process of setting up and deploying the updated CyberShield AI threat intelligence platform.
-
----
-
-## Step 1: Set Up Supabase Project
-
-1. Go to [Supabase](https://supabase.com) and sign in.
-2. Click **New Project** and select your organization.
-3. Configure your project name (`CyberShield`), a strong database password, and choose your region. Click **Create new project**.
-4. Wait a couple of minutes for your project database to provision.
-5. In the left navigation bar, click the **SQL Editor** (icon looking like `SQL`).
-6. Click **New query**, paste the entire contents of your [supabase_setup.sql](file:///C:/Users/sidda/cybershield/supabase_setup.sql) file into the text area, and click **Run**.
-7. In the left menu, go to **Project Settings** -> **API**. Note down the following credentials:
-   - **Project URL** (e.g., `https://xxxxxx.supabase.co`)
-   - **Project API Keys** -> `service_role` (Secret, bypasses RLS - for Railway backend)
-   - **Project API Keys** -> `anon` (Public - for index.html client initialization)
+This guide details the step-by-step process to deploy and configure the CyberShield platform (FastAPI backend + HTML/JS frontend) from scratch.
 
 ---
 
-## Step 2: Get Security Threat Intel API Keys
+## 1. Prerequisites and Backend Environments
 
-Register for free developer accounts at the following links to obtain your scanning API keys:
-1. **VirusTotal Key**: Sign up at [VirusTotal](https://www.virustotal.com/gui/my-apikey).
-2. **AbuseIPDB Key**: Sign up at [AbuseIPDB API](https://www.abuseipdb.com/account/api).
-3. **URLScan Key**: Sign up at [URLScan Profile API](https://urlscan.io/user/profile/).
-4. **AlienVault OTX Key**: Sign up at [OTX Alienvault API](https://otx.alienvault.com/api).
-5. **PhishTank Key**: Register an application at [PhishTank API Registry](https://www.phishtank.com/api_register.php).
-6. **Shodan Key**: Sign up at [Shodan Account](https://account.shodan.io).
+### Environment Variables (.env / Railway Config)
+Configure these variables in your deployment dashboard or local `.env` file:
 
----
-
-## Step 3: Configure Railway Environment Variables
-
-1. Go to your [Railway Dashboard](https://railway.app).
-2. Select your `cybershield` service.
-3. Navigate to the **Variables** tab.
-4. Click **New Variable** and configure the following:
-
-| Variable Name | Description / Source |
-|---|---|
-| `VIRUSTOTAL_API_KEY` | Your VirusTotal API Key |
-| `ABUSEIPDB_API_KEY` | Your AbuseIPDB API Key |
-| `IPINFO_API_KEY` | Your IPInfo token (optional) |
-| `OTX_API_KEY` | Your AlienVault OTX API Key |
-| `URLSCAN_API_KEY` | Your URLScan.io API Key |
-| `GOOGLE_SAFE_BROWSING_KEY` | Your Google Cloud Safe Browsing API Key |
-| `PHISHTANK_API_KEY` | Your PhishTank App Key (optional) |
-| `SUPABASE_URL` | Your Supabase Project URL from Step 1 |
-| `SUPABASE_SERVICE_KEY` | Your Supabase `service_role` key from Step 1 |
-| `ADMIN_PASSWORD` | Choose a strong password for Admin panel access (e.g. `SecretPassword123`) |
-| `ADMIN_JWT_SECRET` | Any random 32-character string for signing JWT tokens |
-| `FRONTEND_URL` | Your GitHub Pages URL (e.g., `https://yourusername.github.io`) |
+| Variable | Description | Source / How to get it |
+|---|---|---|
+| `PORT` | Local binding port (default: 8000) | Automatically provided by Railway. |
+| `ADMIN_PASSWORD` | Security password for the admin panel | Set to a strong custom string (e.g. `p@ssw0rdSecureAdmin!`). |
+| `ADMIN_JWT_SECRET` | Secret key used to sign Admin access tokens | Set to a random 64-character hex sequence. |
+| `VIRUSTOTAL_API_KEY` | Key for VirusTotal domain reputation scanning | Get a free developer key at [VirusTotal Community](https://www.virustotal.com/gui/my-apikey). |
+| `ABUSEIPDB_API_KEY` | Key for AbuseIPDB reputation scanning | Get a free developer key at [AbuseIPDB Dashboard](https://www.abuseipdb.com/account/api). |
+| `OTX_API_KEY` | Key for AlienVault threat pulses lookup | Get a free API key at [AlienVault OTX API](https://otx.alienvault.com/api). |
+| `URLSCAN_API_KEY` | Key for Urlscan website preview checks | Get a free API key at [Urlscan.io Profiles](https://urlscan.io/user/profile/). |
+| `GOOGLE_SAFE_BROWSING_KEY` | Key for Safe Browsing URL matching | Get a key in [Google Cloud Console](https://console.cloud.google.com/) under APIs. |
+| `PHISHTANK_API_KEY` | Key for PhishTank confirmed fishing index lookup | Register for an app key at [PhishTank Developers](https://www.phishtank.com/api_register.php). |
+| `SUPABASE_URL` | Endpoint url for user session auth | Copy from project settings in the [Supabase Dashboard](https://supabase.com). |
+| `SUPABASE_SERVICE_KEY` | Secure service role key for API operations | Copy from API section under Supabase settings (keep safe). |
+| `ALLOWED_ORIGINS` | CORS Whitelist origins array | e.g. `["https://bgm8.github.io", "http://localhost:3000"]`. |
 
 ---
 
-## Step 4: Deploy the Backend to Railway
-
-1. Open your terminal in the workspace root.
-2. Initialize or link your Railway project:
-   ```bash
-   railway link
-   ```
-3. Deploy the project using the Railway CLI:
-   ```bash
-   railway up
-   ```
-4. Verify that the build succeeds. Once online, copy the production endpoint URL (e.g., `https://cybershield-production-xxxx.up.railway.app`).
+## 2. Supabase Database Initialization
+1. Log in to the [Supabase Dashboard](https://supabase.com) and create a new project.
+2. Navigate to the **SQL Editor** in the sidebar.
+3. Open a new query window and paste the contents of `supabase_setup.sql`.
+4. Click **Run** to generate the tables, indexes, Row-Level Security (RLS) policies, and triggers.
 
 ---
 
-## Step 5: Configure the Frontend
-
-1. Open [index.html](file:///C:/Users/sidda/cybershield/index.html).
-2. Go to the start of the `<script>` block (around line 987).
-3. Update the constants with your Supabase anonymous credentials and Railway URL:
-   ```javascript
-   const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-   const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-   const BACKEND_URL = 'YOUR_RAILWAY_BACKEND_URL';
-   ```
-4. Commit and push the frontend files to your GitHub repository to trigger the GitHub Pages deployment:
-   ```bash
-   git add .
-   git commit -m "Upgrade CyberShield features, BYOK, and Admin Dashboard"
-   git push origin main
-   ```
+## 3. Razorpay Subscription Configuration
+1. Register an account at [Razorpay Dashboard](https://razorpay.com).
+2. Switch to **Test Mode** (or Live Mode if deploying for production).
+3. Navigate to **API Keys** under Settings and copy your `YOUR_RAZORPAY_KEY_ID`.
+4. Paste this key into the frontend checkout script block inside `index.html` at the `checkoutProPlan()` function.
+5. Create a Webhook matching `/payment/verify` in Razorpay if you want automated backend verification.
 
 ---
 
-## Step 6: Verify and Test Features
+## 4. Admin Panel Access
+- The Admin Console is located on the frontend router hash segment: `https://yourdomain.com/#admin`.
+- Because the router checks location hash segments locally, the `#admin` route is never sent to the server, protecting the administrative entrance from active scanners.
+- **Login Flow**:
+  1. Input your configured `ADMIN_PASSWORD`.
+  2. The server signs and returns a secure JWT (8-hour expiration ceiling) with rotated session JTI IDs.
+  3. The token is saved in `sessionStorage` and automatically appended to verification headers.
 
-### 1. Main Scanner Tab
-- Input a valid domain (e.g., `google.com`) or IP (e.g., `8.8.8.8`) and click **Analyze**.
-- Verify that results load showing the **Threat Verdict** circle and **AI Analyst Copilot** report card at the top, the **Security Vendor Audit** list second (try typing into the search bar or clicking the status filters), and the details stacks third.
+---
 
-### 2. Authentication Modal
-- Click **Sign Up Free** in the header. Fill in email/password details and verify that a verification email is sent, and the user profile is successfully registered under the `profiles` table in Supabase.
-- Log in and verify that your dashboard tab becomes accessible, showing your historic scans and status badge.
+## 5. Pre-deployment Checklist
+- [ ] Confirm `ADMIN_PASSWORD` is updated from defaults.
+- [ ] Verify `ALLOWED_ORIGINS` CORS origins match target hosts.
+- [ ] Ensure clickjacking protection (`window !== window.top`) block is active.
+- [ ] Confirm DOMPurify is loading with valid Subresource Integrity hashes.
+- [ ] Ensure uvicorn runs with standard smuggling boundary constraints.
 
-### 3. Bring Your Own Key (BYOK) Tab
-- Go to the **⚙️ My API Keys** tab.
-- Enter a VirusTotal API key and click **Save**.
-- Verify that status changes to **SAVED**. Run a scan and verify the "⚡ Using your personal API key" banner appears at the scanner tab.
+---
 
-### 4. Admin Panel Access
-- Navigate to your frontend site with the `#admin` hash appended (e.g., `https://yourusername.github.io/cybershield/#admin`).
-- You should be prompted with a secure password modal.
-- Input the `ADMIN_PASSWORD` you set in Railway.
-- Verify you are redirected to the administrative panel containing scans telemetry stats, user management toggles (suspension triggers), error log diagnostic reports, and the maintenance mode toggle.
+## 6. How to Test Each of the 16 Scan Services
+
+Launch the backend local server (`python -m uvicorn main:app --port 8000`) and test using the following guidelines:
+
+1. **URL Safety**: Submit `https://google.com` to `/scan` (type: `url`).
+2. **IP Reputation**: Submit `8.8.8.8` to `/scan` (type: `ip`).
+3. **Email Breach**: Submit `test@example.com` to `/check/email` (check spam score & breach count).
+4. **Password check**: Submit a weak password to `/check/password` (check strength count & breach indices).
+5. **WHOIS Lookup**: Submit `github.com` to `/check/whois` (check registration details).
+6. **SSL Certificate**: Submit `github.com` to `/check/ssl` (check certificate grade).
+7. **DNS Records**: Submit `google.com` to `/check/dns` (verify SPF status).
+8. **Safe Screenshot**: Submit `https://github.com` to `/check/screenshot`.
+9. **Blacklist Check**: Submit `1.1.1.1` to `/check/blacklist` (spam listing records).
+10. **Malware Hash**: Submit a known malware hash (like a test EICAR string) to `/check/hash`.
+11. **OTX Threat Intel**: Submit `google.com` to `/check/otx`.
+12. **PhishTank Check**: Submit a phishing URL to `/check/phishing`.
+13. **UPI Fraud Check**: Submit `scamwinner@ybl` to `/check/upi` (look for warning indicators).
+14. **WhatsApp link**: Submit a shortened domain containing `free-reward` to `/check/whatsapp`.
+15. **Job Offer check**: Submit `google-careers.com` to `/check/joboffer` (should flag as lookalike).
+16. **QR Code Scanner**: Upload an image containing a decoded URL via multi-part form to `/check/qrcode`.
