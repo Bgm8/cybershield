@@ -24,7 +24,7 @@
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
     <style>
-        /* ΓöÇΓöÇ CSS STYLING SYSTEM ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── CSS STYLING SYSTEM ────────────────────────────────────────────────── */
         :root {
             --bg-main: #04070f;
             --bg2: #070d1a;
@@ -63,7 +63,7 @@
             min-height: 100vh;
         }
 
-        /* ΓöÇΓöÇ ANIMATED GRID BG ΓöÇΓöÇ */
+        /* ── ANIMATED GRID BG ── */
         body::before {
             content: '';
             position: fixed;
@@ -76,7 +76,7 @@
             z-index: -20;
         }
 
-        /* ΓöÇΓöÇ SCANLINE ΓöÇΓöÇ */
+        /* ── SCANLINE ── */
         body::after {
             content: '';
             position: fixed;
@@ -90,7 +90,7 @@
             to { top: 100%; }
         }
 
-        /* ΓöÇΓöÇ GLOW ORBS ΓöÇΓöÇ */
+        /* ── GLOW ORBS ── */
         .orb {
             position: fixed;
             border-radius: 50%;
@@ -102,7 +102,7 @@
         .orb2 { width: 300px; height: 300px; background: rgba(124, 58, 237, 0.05); top: 40%; right: -80px; }
         .orb3 { width: 350px; height: 350px; background: rgba(0, 212, 255, 0.04); bottom: -100px; left: 30%; }
 
-        /* ΓöÇΓöÇ FONTS & UTILITIES ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── FONTS & UTILITIES ─────────────────────────────────────────────────── */
         .font-display { font-family: 'Orbitron', sans-serif; }
         .font-mono { font-family: 'Share Tech Mono', monospace; }
         .font-outfit { font-family: 'Outfit', sans-serif; }
@@ -185,7 +185,7 @@
             box-shadow: 0 0 12px var(--primary-glow);
         }
 
-        /* ΓöÇΓöÇ HEADER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── HEADER ───────────────────────────────────────────────────────────── */
         header {
             position: sticky;
             top: 0;
@@ -310,7 +310,7 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        /* ΓöÇΓöÇ HERO SECTION ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── HERO SECTION ────────────────────────────────────────────────────── */
         .hero {
             padding: 80px 0 50px;
             text-align: center;
@@ -372,7 +372,7 @@
             color: var(--text-faint);
         }
 
-        /* ΓöÇΓöÇ STATS BAR ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── STATS BAR ───────────────────────────────────────────────────────── */
         .stats-bar {
             display: flex;
             justify-content: center;
@@ -408,7 +408,7 @@
             text-transform: uppercase;
         }
 
-        /* ΓöÇΓöÇ MAIN VIEWS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── MAIN VIEWS ──────────────────────────────────────────────────────── */
         .view-panel {
             display: none;
             margin-bottom: 80px;
@@ -422,7 +422,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ΓöÇΓöÇ SCANNER VIEW ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── SCANNER VIEW ─────────────────────────────────────────────────────── */
         .scanner-card {
             padding: 40px;
             text-align: center;
@@ -622,7 +622,7 @@
             color: white;
         }
 
-        /* ≡ƒåò Stacked details cards */
+        /* 📦 Stacked details cards */
         .details-stack {
             display: flex;
             flex-direction: column;
@@ -686,7 +686,7 @@
             margin-bottom: 16px;
         }
 
-        /* ΓöÇΓöÇ DEEP SCAN TAB ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── DEEP SCAN TAB ───────────────────────────────────────────────────── */
         .deep-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -761,7 +761,7 @@
         .risk-danger { background: rgba(255, 68, 68, 0.12); color: var(--danger); border: 1px solid rgba(255, 68, 68, 0.2); }
         .risk-unknown { background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border-light); }
 
-        /* ΓöÇΓöÇ HISTORY VIEW ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── HISTORY VIEW ────────────────────────────────────────────────────── */
         .history-timeline {
             display: flex;
             flex-direction: column;
@@ -781,7 +781,7 @@
             transform: translateX(4px);
         }
 
-        /* ΓöÇΓöÇ PRICING TAB ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── PRICING TAB ──────────────────────────────────────────────────────── */
         .pricing-layout {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -867,7 +867,7 @@
             font-size: 0.9rem;
         }
 
-        /* ΓöÇΓöÇ BYOK TAB ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── BYOK TAB ─────────────────────────────────────────────────────────── */
         .byok-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -901,7 +901,7 @@
             gap: 8px;
         }
 
-        /* ΓöÇΓöÇ MODALS (Auth, Privacy, Limits, Admin verify) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── MODALS (Auth, Privacy, Limits, Admin verify) ────────────────────── */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -978,7 +978,7 @@
             background: rgba(0, 212, 255, 0.04);
         }
 
-        /* ΓöÇΓöÇ ADMIN PANEL LAYOUT ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── ADMIN PANEL LAYOUT ──────────────────────────────────────────────── */
         #admin-panel {
             min-height: 100vh;
             background: #020408;
@@ -1089,7 +1089,7 @@
             border-radius: 8px;
         }
 
-        /* ΓöÇΓöÇ FOOTER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+        /* ── FOOTER ──────────────────────────────────────────────────────────── */
         footer {
             border-top: 1px solid var(--border-light);
             padding: 60px 0 40px;
@@ -1161,7 +1161,7 @@
         ⚠️ SYSTEM UNDER SCHEDULED MAINTENANCE — SCANS TEMPORARILY OFFLINE
     </div>
 
-    <!-- ΓöÇΓöÇ STANDARD USER INTERFACE ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ -->
+    <!-- ── STANDARD USER INTERFACE ─────────────────────────────────────────── -->
     <div id="main-ui">
         <!-- HEADER -->
         <header>
@@ -1207,7 +1207,7 @@
         <!-- CONTAINER BODY -->
         <main class="container mt-6">
             
-            <!-- ΓöÇΓöÇ HERO SECTION ΓöÇΓöÇ -->
+            <!-- ── HERO SECTION ── -->
             <section class="hero">
                 <div class="hero-banner">
                     <div class="hero-banner-dot"></div>
@@ -1233,7 +1233,7 @@
                 </div>
             </section>
 
-            <!-- ΓöÇΓöÇ STATS BAR ΓöÇΓöÇ -->
+            <!-- ── STATS BAR ── -->
             <section class="stats-bar">
                 <div class="stat-card glass-panel">
                     <div class="stat-val font-display">91+</div>
@@ -1257,12 +1257,25 @@
                 </div>
             </section>
 
-            <!-- ΓöÇΓöÇ 1. SCANNER VIEW ΓöÇΓöÇ -->
+            <!-- ── 1. SCANNER VIEW ── -->
             <div id="view-scanner" class="view-panel active">
                 <div class="scanner-card glass-panel card-active-glow">
-                    <div class="scan-selector">
-                        <button class="scan-selector-btn active font-mono" id="btn-sel-url" onclick="setScanType('url')">≡ƒöù URL / Domain</button>
-                        <button class="scan-selector-btn font-mono" id="btn-sel-ip" onclick="setScanType('ip')">🌐 IPv4 Address</button>
+                    <div class="scan-selector" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 900px; margin: 0 auto 24px;">
+                        <button class="scan-selector-btn active font-mono" id="btn-sel-url" onclick="setScanType('url')">🔗 URL</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-ip" onclick="setScanType('ip')">🌐 IP</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-email" onclick="setScanType('email')">📧 Email</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-password" onclick="setScanType('password')">🔑 Password</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-hash" onclick="setScanType('hash')">📇 File Hash</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-upi" onclick="setScanType('upi')">💳 UPI Fraud</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-whatsapp" onclick="setScanType('whatsapp')">💬 WhatsApp</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-joboffer" onclick="setScanType('joboffer')">💼 Job Scam</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-social" onclick="setScanType('social')">👤 Social Profile</button>
+                        <button class="scan-selector-btn font-mono" id="btn-sel-qrcode" onclick="setScanType('qrcode')">📷 QR Code</button>
+                    </div>
+
+                    <div id="qr-upload-area" style="display: none; margin-top: 15px; margin-bottom: 15px;">
+                        <label class="font-mono text-muted text-sm d-block mb-2">UPLOAD QR CODE IMAGE</label>
+                        <input type="file" id="qr-file-input" class="text-input" accept="image/*" style="max-width: 400px; margin: 0 auto;">
                     </div>
 
                     <div id="personal-key-indicator" class="byok-active-banner" style="display: none;">
@@ -1363,7 +1376,7 @@
                 </div>
             </div>
 
-            <!-- ΓöÇΓöÇ 2. DEEP SCAN VIEW ΓöÇΓöÇ -->
+            <!-- ── 2. DEEP SCAN VIEW ── -->
             <div id="view-deepscan" class="view-panel">
                 <h2 class="font-display mb-4" style="text-align: left;">🔎 Deep Threat Security Audits</h2>
                 <p class="text-muted mb-6" style="text-align: left;">Execute specialized audits for passwords, emails, SSL connections, blacklists, and domains.</p>
@@ -1372,7 +1385,7 @@
                     <!-- EMAIL REPUTATION CARD -->
                     <div class="glass-panel deep-card card-active-glow">
                         <div class="deep-header">
-                            <span class="deep-icon">≡ƒôº</span>
+                            <span class="deep-icon">📧</span>
                             <span class="deep-title font-display">Email Reputation</span>
                             <span class="risk-badge risk-unknown" id="badge-email">Idle</span>
                         </div>
@@ -1386,7 +1399,7 @@
                     <!-- PASSWORD BREACH CARD -->
                     <div class="glass-panel deep-card card-active-glow">
                         <div class="deep-header">
-                            <span class="deep-icon">≡ƒöæ</span>
+                            <span class="deep-icon">🔑</span>
                             <span class="deep-title font-display">Password Strength &amp; Leak</span>
                             <span class="risk-badge risk-unknown" id="badge-password">Idle</span>
                         </div>
@@ -1403,7 +1416,7 @@
                     <!-- WHOIS LOOKUP CARD -->
                     <div class="glass-panel deep-card card-active-glow">
                         <div class="deep-header">
-                            <span class="deep-icon">≡ƒô¥</span>
+                            <span class="deep-icon">📝</span>
                             <span class="deep-title font-display">WHOIS Domain Info</span>
                             <span class="risk-badge risk-unknown" id="badge-whois">Idle</span>
                         </div>
@@ -1520,7 +1533,7 @@
                 </div>
             </div>
 
-            <!-- ΓöÇΓöÇ 3. HISTORY VIEW ΓöÇΓöÇ -->
+            <!-- ── 3. HISTORY VIEW ── -->
             <div id="view-history" class="view-panel">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                     <h2 class="font-display" style="text-align: left;">📊 Timeline History</h2>
@@ -1531,7 +1544,7 @@
                 </div>
             </div>
 
-            <!-- ΓöÇΓöÇ 4. PRICING VIEW ΓöÇΓöÇ -->
+            <!-- ── 4. PRICING VIEW ── -->
             <div id="view-pricing" class="view-panel" style="text-align: left;">
                 <h2 class="font-display mb-2">Upgrade Your Shield</h2>
                 <p class="text-muted mb-6">Choose a plan that fits your security workflow requirements.</p>
@@ -1591,21 +1604,21 @@
                 <div class="faq-section">
                     <h3 class="font-display mb-4">Frequently Asked Questions</h3>
                     <div class="faq-item">
-                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">How does Bring Your Own Key (BYOK) work? <span>Γû╝</span></div>
+                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">How does Bring Your Own Key (BYOK) work? <span>▼</span></div>
                         <div class="faq-answer">By entering your free keys from services like VirusTotal or AbuseIPDB on the settings tab, the CyberShield engine will perform API calls using your personal key thresholds, granting you unlimited daily checks.</div>
                     </div>
                     <div class="faq-item">
-                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">Are my API keys safe? <span>Γû╝</span></div>
+                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">Are my API keys safe? <span>▼</span></div>
                         <div class="faq-answer">Absolutely. We save your keys inside your browser's local storage only. We never save them on our databases, ensuring total developer privacy.</div>
                     </div>
                     <div class="faq-item">
-                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">Can I delete my account scans history? <span>Γû╝</span></div>
+                        <div class="faq-question font-outfit" onclick="toggleFaq(this)">Can I delete my account scans history? <span>▼</span></div>
                         <div class="faq-answer">Yes, logged in users can purge their database logs entirely from their dashboard panel at any time.</div>
                     </div>
                 </div>
             </div>
 
-            <!-- ΓöÇΓöÇ 5. BYOK SETTINGS VIEW ΓöÇΓöÇ -->
+            <!-- ── 5. BYOK SETTINGS VIEW ── -->
             <div id="view-byok" class="view-panel" style="text-align: left;">
                 <h2 class="font-display mb-2">⚙️ Bring Your Own Key (BYOK)</h2>
                 <p class="text-muted mb-6">Enter your credentials below to enable unlimited free scans. Keys are stored safely in local browser memory only.</p>
@@ -1715,7 +1728,7 @@
                 </div>
             </div>
 
-            <!-- ΓöÇΓöÇ 6. ABOUT TAB ΓöÇΓöÇ -->
+            <!-- ── 6. ABOUT TAB ── -->
             <div id="view-about" class="view-panel" style="text-align: left; max-width: 800px; margin: 0 auto 80px;">
                 <h2 class="font-display mb-4">📚 About CyberShield</h2>
                 <p class="mb-4">
@@ -1736,7 +1749,7 @@
                 </p>
             </div>
 
-            <!-- ΓöÇΓöÇ 7. LOGGED IN USER DASHBOARD ΓöÇΓöÇ -->
+            <!-- ── 7. LOGGED IN USER DASHBOARD ── -->
             <div id="view-dashboard" class="view-panel" style="text-align: left;">
                 <h2 class="font-display mb-2" id="dash-welcome">Security Overview 👋</h2>
                 <p class="text-muted mb-6">Review your account status and historic scan timeline logs.</p>
@@ -1794,7 +1807,7 @@
             </div>
         </main>
 
-        <!-- ΓöÇΓöÇ 8. ADMIN CONTROL INTERFACE ΓöÇΓöÇ -->
+        <!-- ── 8. ADMIN CONTROL INTERFACE ── -->
         <div id="view-admin" class="view-panel" style="text-align: left;">
             <div style="margin-bottom: 24px;">
                 <h2 class="font-display" style="color: var(--danger); font-size: 1.5rem; margin: 0 0 4px 0; letter-spacing: 1px;">🔒 ADMINISTRATIVE HUB</h2>
@@ -1844,13 +1857,13 @@
                     <!-- Admin Analytics Charts -->
                     <div class="admin-charts-grid">
                         <div class="chart-container glass-panel">
-                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">≡ƒôê SCANS VOLUME (LAST 24 HOURS)</h4>
+                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">📈 SCANS VOLUME (LAST 24 HOURS)</h4>
                             <div style="height: 250px; position: relative;">
                                 <canvas id="chart-scans-hours"></canvas>
                             </div>
                         </div>
                         <div class="chart-container glass-panel">
-                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">≡ƒì⌐ THREAT CLASSIFICATION RATIOS</h4>
+                            <h4 class="font-display mb-4" style="font-size: 0.9rem; color: var(--danger);">🍩 THREAT CLASSIFICATION RATIOS</h4>
                             <div style="height: 250px; position: relative;">
                                 <canvas id="chart-threats-donut"></canvas>
                             </div>
@@ -1912,7 +1925,7 @@
                 <!-- ADMIN VIEW: WAITLIST -->
                 <div id="admin-view-waitlist" class="admin-view-panel" style="text-align: left;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                        <h3 class="font-display">≡ƒô¼ Early Access Waitlist</h3>
+                        <h3 class="font-display">📧 Early Access Waitlist</h3>
                         <button class="secondary-btn font-mono" onclick="exportAdminWaitlistCsv()">Export CSV</button>
                     </div>
                     <div class="admin-table-wrapper">
@@ -1994,7 +2007,7 @@
         </footer>
     </div>
 
-    <!-- ΓöÇΓöÇ MODAL OVERLAYS ΓöÇΓöÇ -->
+    <!-- ── MODAL OVERLAYS ── -->
 
     <!-- Auth Modal -->
     <div id="auth-modal" class="modal-overlay">
@@ -2003,7 +2016,7 @@
             <h2 class="font-display mb-4" id="auth-modal-title">Welcome Back 👋</h2>
             
             <div class="signup-benefits" id="auth-benefits-list" style="display: none;">
-                <div>≡ƒÆí Sign up free to unlock:</div>
+                <div>💡 Sign up free to unlock:</div>
                 <div style="margin-top: 4px;">✅ 20 scans/day quota limit</div>
                 <div>✅ Save your scan timeline history forever</div>
                 <div>✅ Configure developer BYOK credentials</div>
@@ -2106,9 +2119,9 @@
         </div>
     </div>
 
-    <!-- ΓöÇΓöÇ JAVASCRIPT APP ENGINE ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ -->
+    <!-- ── JAVASCRIPT APP ENGINE ────────────────────────────────────────────── -->
     <script>
-        // ΓöÇΓöÇ SUPABASE CONFIGURATION ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── SUPABASE CONFIGURATION ──────────────────────────────────────────
         // Users can override this by configuring their environment values
         const SUPABASE_URL = 'YOUR_SUPABASE_URL';
         const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
@@ -2124,7 +2137,7 @@
             console.error("[CYBERSHIELD] Failed to load Supabase SDK.", e);
         }
 
-        // ΓöÇΓöÇ STATE VARIABLES ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── STATE VARIABLES ──────────────────────────────────────────────────
         let currentScanType = "url";
         let activeView = "scanner";
         let userSession = null;
@@ -2155,7 +2168,7 @@
         ];
         let rotatorIndex = 0;
 
-        // ΓöÇΓöÇ INIT DOMContentLoaded ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── INIT DOMContentLoaded ────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', () => {
             initAppRotator();
             checkUrlHash();
@@ -2223,7 +2236,7 @@
             }
         }
 
-        // ΓöÇΓöÇ NAVIGATION CONTROLLER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── NAVIGATION CONTROLLER ────────────────────────────────────────────
         function navigate(viewId) {
             if (viewId === 'admin') {
                 const token = adminToken || sessionStorage.getItem("cs_admin_jwt");
@@ -2264,7 +2277,7 @@
             }
         });
 
-        // ΓöÇΓöÇ SUPABASE AUTHENTICATION CONTROLLER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── SUPABASE AUTHENTICATION CONTROLLER ─────────────────────────────────
         let authMode = "login";
 
         async function loadSessionState() {
@@ -2422,7 +2435,7 @@
             navigate('scanner');
         }
 
-        // ΓöÇΓöÇ CORE SCAN ENGINE CONTROLLER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── CORE SCAN ENGINE CONTROLLER ───────────────────────────────────────
         function setScanType(type) {
             currentScanType = type;
             document.querySelectorAll('.scan-selector-btn').forEach(btn => btn.classList.remove('active'));
@@ -3125,7 +3138,7 @@
             document.getElementById("history-timeline-list").innerHTML = `<div class="empty-state font-mono text-faint">No scans performed yet in this session. Run scans on Scanner/Deep Scan to build local timeline.</div>`;
         }
 
-        // ΓöÇΓöÇ 3. DEEP SCANS ROUTE HANDLERS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── 3. DEEP SCANS ROUTE HANDLERS ───────────────────────────────────────
         async function runDeepScan(service) {
             const inputVal = document.getElementById(`input-deep-${service}`).value.trim();
             const resultBox = document.getElementById(`result-${service}`);
@@ -3309,7 +3322,7 @@
             }
         }
 
-        // ΓöÇΓöÇ 4. BYOK MANAGER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── 4. BYOK MANAGER ──────────────────────────────────────────────────
         function saveKey(service) {
             const input = document.getElementById(`key-input-${service}`);
             const val = input.value.trim();
@@ -3347,7 +3360,7 @@
             }
         }
 
-        // ΓöÇΓöÇ 5. USER DASHBOARD ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── 5. USER DASHBOARD ────────────────────────────────────────────────
         async function loadUserDashboard() {
             if (!supabase || !userSession) return;
             document.getElementById("dash-welcome").textContent = `Security Overview for ${userSession.user.email} 👋`;
@@ -3410,7 +3423,7 @@
             }
         }
 
-        // ΓöÇΓöÇ LIMIT EXCEEDED MODAL HANDLERS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── LIMIT EXCEEDED MODAL HANDLERS ──────────────────────────────────────
         function openLimitModal() {
             document.getElementById("limit-modal").style.display = "flex";
             document.getElementById("waitlist-msg").style.display = "none";
@@ -3446,7 +3459,7 @@
             openLimitModal();
         }
 
-        // ΓöÇΓöÇ STATS BAR UPDATE ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── STATS BAR UPDATE ──────────────────────────────────────────────────
         async function fetchSystemCounters() {
             try {
                 const res = await fetch(`${BACKEND_URL}/`);
@@ -3470,7 +3483,7 @@
             }
         }
 
-        // ΓöÇΓöÇ LEGAL MODAL HANDLERS ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── LEGAL MODAL HANDLERS ──────────────────────────────────────────────
         const LEGAL_TEXTS = {
             privacy: `CyberShield Privacy Policy
             Effective Date: July 14, 2026
@@ -3517,7 +3530,7 @@
             answer.style.display = answer.style.display === "block" ? "none" : "block";
         }
 
-        // ΓöÇΓöÇ 9. ADMIN PANEL INTERACTIVE CONTROLLER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── 9. ADMIN PANEL INTERACTIVE CONTROLLER ────────────────────────────
         let adminToken = null;
         let adminRefreshInterval = null;
         let activeAdminTab = "stats";
