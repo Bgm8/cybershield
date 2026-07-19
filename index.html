@@ -1376,6 +1376,12 @@
                 </div>
             </div>
 
+            <!-- ── 5. BLOG VIEW ── -->
+            <div id="view-blog" class="view-panel" style="text-align: left;">
+                <div id="blog-list-container" class="blog-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;"></div>
+                <div id="blog-full-article-container" class="blog-full-article" style="display: none; background: rgba(255,255,255,0.02); padding: 32px; border-radius: 12px; border: 1px solid var(--border-light);"></div>
+            </div>
+
             <!-- ── 2. DEEP SCAN VIEW ── -->
             <div id="view-deepscan" class="view-panel">
                 <h2 class="font-display mb-4" style="text-align: left;">🔎 Deep Threat Security Audits</h2>
@@ -2121,21 +2127,7 @@
 
     <!-- ── JAVASCRIPT APP ENGINE ────────────────────────────────────────────── -->
     <script>
-        // ── SUPABASE CONFIGURATION ──────────────────────────────────────────
-        // Users can override this by configuring their environment values
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
-        let supabase = null;
-        try {
-            if (supabaseSDK) {
-                // Initialize client
-                supabase = supabaseSDK.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                console.log("[CYBERSHIELD] Supabase JS Client initialized.");
-            }
-        } catch (e) {
-            console.error("[CYBERSHIELD] Failed to load Supabase SDK.", e);
-        }
 
         // ── STATE VARIABLES ──────────────────────────────────────────────────
         let currentScanType = "url";
@@ -3362,7 +3354,7 @@
 
         // ── 5. USER DASHBOARD ────────────────────────────────────────────────
         async function loadUserDashboard() {
-            if (!supabase || !userSession) return;
+            if (!supabaseClient || !userSession) return;
             document.getElementById("dash-welcome").textContent = `Security Overview for ${userSession.user.email} 👋`;
 
             try {
@@ -3413,7 +3405,7 @@
         }
 
         async function purgeUserDbHistory() {
-            if (!supabase || !userSession) return;
+            if (!supabaseClient || !userSession) return;
             if (!confirm("Are you sure you want to delete your saved scan logs from the database forever?")) return;
             try {
                 await supabaseClient.table("scans").delete().eq("user_id", userSession.user.id);
