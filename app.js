@@ -3,10 +3,10 @@
 // ==========================================================================
 
 // ── SECURITY CONFIGURATION ────────────────────────────────────────────────
-const BACKEND_URL = "https://cybershield-production-2548.up.railway.app";
+const BACKEND_URL = "https://cybershield-59an.onrender.com";
 
 // Allowed hostname for the backend (prevents JS hijacking)
-const BACKEND_HOST = "cybershield-production-2548.up.railway.app";
+const BACKEND_HOST = "cybershield-59an.onrender.com";
 
 // Validate the backend URL hasn't been tampered with
 (function guardBackendUrl() {
