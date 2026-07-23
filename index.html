@@ -2176,7 +2176,7 @@
                 scanInput.addEventListener("keydown", (e) => {
                     if (e.key === "Enter") {
                         e.preventDefault();
-                        runMainScan();
+                        executeScanRequest();
                     }
                 });
             }
@@ -3401,7 +3401,7 @@
             navigate('scanner');
             document.getElementById("scan-target").value = target;
             setScanType(type);
-            runMainScan();
+            executeScanRequest();
         }
 
         async function purgeUserDbHistory() {
