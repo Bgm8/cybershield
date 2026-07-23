@@ -33,7 +33,13 @@ import dns.resolver
 
 # QR Code decoding
 from PIL import Image
-from pyzbar.pyzbar import decode
+
+pyzbar_available = True
+try:
+    from pyzbar.pyzbar import decode
+except ImportError:
+    pyzbar_available = False
+    print("[SYSTEM] Warning: ZBar library not found. QR code decoding is disabled.")
 
 # Load environment
 load_dotenv()
@@ -1146,6 +1152,8 @@ async def check_social(request: Request, req: SocialRequest):
 # 17. QR Code URL Extractor + Checker
 @app.post("/check/qrcode")
 async def scan_qrcode(file: UploadFile = File(...)):
+    if not pyzbar_available:
+        return {"verdict": "ERROR", "summary_message": "❌ QR Code scanning is currently offline on the server: ZBar shared library is missing on the host environment."}
     try:
         content = await file.read()
         img = Image.open(io.BytesIO(content))
